@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import Login from "./pages/Login";
+import AdminPage from "./pages/AdminPage";
+import ModulePage from "./pages/ModulePage";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+import { Routes, Route, useNavigate } from "react-router-dom";
+
+const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 function App() {
   const [message, setMessage] = useState("Loading...");
@@ -11,6 +15,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
+  const navigate = useNavigate();
   const timeoutRef = useRef(null);
 
   const clearSession = () => {
@@ -22,14 +27,11 @@ function App() {
   };
 
   const resetInactivityTimer = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!localStorage.getItem("token")) return;
 
     localStorage.setItem("lastActivity", Date.now().toString());
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
     timeoutRef.current = setTimeout(() => {
       clearSession();
@@ -49,7 +51,9 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
+            const res = await authFetch(
+              `${import.meta.env.VITE_API_URL}/auth/me`
+            );
 
             if (!res.ok) {
               clearSession();
@@ -58,13 +62,14 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remainingTime = SESSION_TIMEOUT - (now - Number(lastActivity));
+              const remaining =
+                SESSION_TIMEOUT - (now - Number(lastActivity));
 
               timeoutRef.current = setTimeout(() => {
                 clearSession();
-              }, remainingTime);
+              }, remaining);
             }
-          } catch (error) {
+          } catch {
             clearSession();
           }
         }
@@ -82,26 +87,20 @@ function App() {
 
     initializeApp();
 
-    const activityEvents = ["mousemove", "keydown", "click", "scroll"];
+    const events = ["mousemove", "keydown", "click", "scroll"];
 
-    const handleActivity = () => {
-      if (localStorage.getItem("token")) {
-        resetInactivityTimer();
-      }
-    };
+    const handleActivity = () => resetInactivityTimer();
 
-    activityEvents.forEach((event) => {
-      window.addEventListener(event, handleActivity);
-    });
+    events.forEach((e) =>
+      window.addEventListener(e, handleActivity)
+    );
 
     return () => {
-      activityEvents.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
+      events.forEach((e) =>
+        window.removeEventListener(e, handleActivity)
+      );
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
@@ -120,69 +119,82 @@ function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-const isAdmin = currentUser?.role === "admin";
-// OR if using boolean:
-// const isAdmin = currentUser?.isAdmin === true;
+  const isAdmin = currentUser?.role === "admin";
 
   return (
-    <div className="app-layout">
-      <div className="main">
-        <div className="header">
-          <div className="logo">Logo</div>
-          <h1 className="title">Dashboard</h1>
-        </div>
+    <Routes>
+      {/* DASHBOARD */}
+      <Route
+        path="/"
+        element={
+          <div className="app-layout">
+            <div className="main">
+              <div className="header">
+                <div className="logo">Logo</div>
+                <h1 className="title">Dashboard</h1>
+              </div>
 
-    <div className="modules">
-      {[
-        ...(isAdmin ? ["admin"] : []),
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ].map((item) => (
-        <div key={item} className="module-card">
-          <div className="icon">📄</div>
-          <p>
-            {item === "admin" ? "Admin" : `Module ${item}`}
-          </p>
-        </div>
-      ))}
-    </div>
+              <div className="modules">
+                {[
+                  ...(isAdmin ? ["admin"] : []),
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="module-card"
+                    onClick={() =>
+                      item === "admin"
+                        ? navigate("/admin")
+                        : navigate(`/module/${item}`)
+                    }
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="icon">📄</div>
+                    <p>
+                      {item === "admin"
+                        ? "Admin"
+                        : `Module ${item}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
 
-        <div className="status">
-          <p>{message}</p>
-          {dbTime && <p>Database time: {dbTime}</p>}
-          {currentUser && <p>Logged in as: {currentUser.username}</p>}
-        </div>
-      </div>
+              <div className="status">
+                <p>{message}</p>
+                {dbTime && <p>Database time: {dbTime}</p>}
+                {currentUser && (
+                  <p>
+                    Logged in as: {currentUser.username}
+                  </p>
+                )}
+              </div>
+            </div>
 
-      <div className="sidebar">
-        <input className="search" placeholder="Search..." />
+            <div className="sidebar">
+              <input
+                className="search"
+                placeholder="Search..."
+              />
 
-        <div className="section">
-          <h4>Section Heading</h4>
-          <ul>
-            <li>Title</li>
-            <li>Title</li>
-            <li>Title</li>
-          </ul>
-        </div>
+              <button className="logout" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        }
+      />
 
-        <div className="section">
-          <h4>Section Heading</h4>
-          <ul>
-            <li>Title</li>
-            <li>Title</li>
-          </ul>
-        </div>
+      {/* ADMIN PAGE */}
+      <Route path="/admin" element={<AdminPage />} />
 
-        <button className="logout" onClick={handleLogout}>
-          Logout
-        </button>
-      </div>
-    </div>
+      {/* MODULE PAGE */}
+      <Route path="/module/:id" element={<ModulePage />} />
+    </Routes>
   );
 }
 
