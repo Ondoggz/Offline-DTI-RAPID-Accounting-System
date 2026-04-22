@@ -1,267 +1,236 @@
-import { useEffect, useRef, useState } from "react";
-import Login from "./pages/login";
-import FarmerManagement from "./pages/farmerManagement";
-import BeanManagement from "./pages/beanManagement";
-import { authFetch } from "./utils/authFetch";
-import "./index.css";
+import { useState } from "react";
 
-const SESSION_TIMEOUT = 30 * 60 * 1000;
-
-function App() {
-  const [message, setMessage] = useState("Loading...");
-  const [dbTime, setDbTime] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [selectedModule, setSelectedModule] = useState(null);
-
-  const [beans, setBeans] = useState([
+function FarmerManagement({ beans }) {
+  const [farmers, setFarmers] = useState([
     {
       id: 1,
-      name: "Arabica",
-      pricePerUnit: 180,
-      unit: "kg",
-      farmers: ["Juan Dela Cruz"],
+      name: "Juan Dela Cruz",
+      age: 45,
+      address: "Bukidnon",
+      beans: ["Arabica", "Excelsa"],
     },
     {
       id: 2,
-      name: "Robusta",
-      pricePerUnit: 150,
-      unit: "kg",
-      farmers: ["Maria Santos"],
-    },
-    {
-      id: 3,
-      name: "Excelsa",
-      pricePerUnit: 170,
-      unit: "kg",
-      farmers: [],
+      name: "Maria Santos",
+      age: 39,
+      address: "Misamis Oriental",
+      beans: ["Robusta"],
     },
   ]);
 
-  const timeoutRef = useRef(null);
+  const [form, setForm] = useState({
+    id: null,
+    name: "",
+    age: "",
+    address: "",
+    beans: [""],
+  });
 
-  const clearSession = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("lastActivity");
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    setSelectedModule(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const resetInactivityTimer = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    localStorage.setItem("lastActivity", Date.now().toString());
-
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    timeoutRef.current = setTimeout(() => {
-      clearSession();
-    }, SESSION_TIMEOUT);
+  const handleBeanChange = (index, value) => {
+    const updatedBeans = [...form.beans];
+    updatedBeans[index] = value;
+    setForm({ ...form, beans: updatedBeans });
   };
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      const savedToken = localStorage.getItem("token");
-      const savedUser = localStorage.getItem("user");
-      const lastActivity = localStorage.getItem("lastActivity");
+  const addBeanField = () => {
+    setForm({ ...form, beans: [...form.beans, ""] });
+  };
 
-      if (savedToken && savedUser) {
-        const now = Date.now();
-
-        if (!lastActivity || now - Number(lastActivity) > SESSION_TIMEOUT) {
-          clearSession();
-        } else {
-          try {
-            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
-
-            if (!res.ok) {
-              clearSession();
-            } else {
-              const data = await res.json();
-              setIsLoggedIn(true);
-              setCurrentUser(data.user);
-
-              const remainingTime = SESSION_TIMEOUT - (now - Number(lastActivity));
-
-              timeoutRef.current = setTimeout(() => {
-                clearSession();
-              }, remainingTime);
-            }
-          } catch {
-            clearSession();
-          }
-        }
-      }
-
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api`);
-        const data = await res.json();
-        setMessage(data.message);
-        setDbTime(data.databaseTime);
-      } catch {
-        setMessage("Failed to connect to backend");
-      }
-    };
-
-    initializeApp();
-
-    const activityEvents = ["mousemove", "keydown", "click", "scroll"];
-
-    const handleActivity = () => {
-      if (localStorage.getItem("token")) {
-        resetInactivityTimer();
-      }
-    };
-
-    activityEvents.forEach((event) => {
-      window.addEventListener(event, handleActivity);
+  const removeBeanField = (index) => {
+    const updatedBeans = form.beans.filter((_, i) => i !== index);
+    setForm({
+      ...form,
+      beans: updatedBeans.length > 0 ? updatedBeans : [""],
     });
+  };
 
-    return () => {
-      activityEvents.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+    const cleanedBeans = form.beans.filter((bean) => bean.trim() !== "");
+
+    if (!form.name || !form.age || !form.address || cleanedBeans.length === 0) {
+      alert("Please fill in all fields and select at least one bean type.");
+      return;
+    }
+
+    const farmerData = {
+      ...form,
+      age: Number(form.age),
+      beans: cleanedBeans,
     };
-  }, []);
 
-  const handleLoginSuccess = (user) => {
-    setIsLoggedIn(true);
-    setCurrentUser(user);
-    localStorage.setItem("lastActivity", Date.now().toString());
-    resetInactivityTimer();
+    if (isEditing) {
+      setFarmers((prev) =>
+        prev.map((farmer) => (farmer.id === form.id ? farmerData : farmer))
+      );
+      setIsEditing(false);
+    } else {
+      const newFarmer = {
+        ...farmerData,
+        id: Date.now(),
+      };
+      setFarmers((prev) => [...prev, newFarmer]);
+    }
+
+    setForm({
+      id: null,
+      name: "",
+      age: "",
+      address: "",
+      beans: [""],
+    });
   };
 
-  const handleLogout = () => {
-    clearSession();
+  const handleEdit = (farmer) => {
+    setForm({
+      id: farmer.id,
+      name: farmer.name,
+      age: farmer.age,
+      address: farmer.address,
+      beans: farmer.beans?.length ? farmer.beans : [""],
+    });
+    setIsEditing(true);
   };
 
-  if (!isLoggedIn) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  const isAdmin = currentUser?.role === "admin";
-
-  const modules = [
-    ...(isAdmin ? ["admin"] : []),
-    "farmers",
-    "beans",
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-  ];
-
-  const renderMainContent = () => {
-    if (selectedModule === "farmers") {
-      return <FarmerManagement beans={beans} />;
+  const handleDelete = (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this farmer?");
+    if (confirmDelete) {
+      setFarmers((prev) => prev.filter((farmer) => farmer.id !== id));
     }
+  };
 
-    if (selectedModule === "beans") {
-      return <BeanManagement beans={beans} setBeans={setBeans} />;
-    }
+  return (
+    <div style={{ padding: "20px" }}>
+      <h2>Farmer Management</h2>
 
-    if (selectedModule === "admin") {
-      return <h2>Admin Module</h2>;
-    }
+      <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>
+        <input
+          type="text"
+          name="name"
+          placeholder="Farmer name"
+          value={form.name}
+          onChange={handleChange}
+        />
 
-    if (typeof selectedModule === "number") {
-      return <h2>{`Module ${selectedModule}`}</h2>;
-    }
+        <input
+          type="number"
+          name="age"
+          placeholder="Age"
+          value={form.age}
+          onChange={handleChange}
+        />
 
-    return (
-      <>
-        <div className="modules">
-          {modules.map((item) => (
+        <input
+          type="text"
+          name="address"
+          placeholder="Address"
+          value={form.address}
+          onChange={handleChange}
+        />
+
+        <div style={{ margin: "10px 0" }}>
+          <p style={{ marginBottom: "8px" }}>Bean Types</p>
+
+          {form.beans.map((bean, index) => (
             <div
-              key={item}
-              className="module-card"
-              onClick={() => setSelectedModule(item)}
-              style={{ cursor: "pointer" }}
+              key={index}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "8px",
+              }}
             >
-              <div className="icon">📄</div>
-              <p>
-                {item === "admin"
-                  ? "Admin"
-                  : item === "farmers"
-                  ? "Farmer Management"
-                  : item === "beans"
-                  ? "Bean Management"
-                  : `Module ${item}`}
-              </p>
+              <select
+                value={bean}
+                onChange={(e) => handleBeanChange(index, e.target.value)}
+              >
+                <option value="">Select bean type</option>
+                {beans.map((beanItem) => (
+                  <option key={beanItem.id} value={beanItem.name}>
+                    {beanItem.name}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={addBeanField}
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  fontSize: "18px",
+                  cursor: "pointer",
+                }}
+                title="Add another bean type"
+              >
+                +
+              </button>
+
+              {form.beans.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeBeanField(index)}
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    fontSize: "18px",
+                    cursor: "pointer",
+                  }}
+                  title="Remove bean type"
+                >
+                  -
+                </button>
+              )}
             </div>
           ))}
         </div>
 
-        <div className="status">
-          <p>{message}</p>
-          {dbTime && <p>Database time: {dbTime}</p>}
-          {currentUser && <p>Logged in as: {currentUser.username}</p>}
-        </div>
-      </>
-    );
-  };
-
-  return (
-    <div className="app-layout">
-      <div className="main">
-        <div className="header">
-          <div className="logo">Logo</div>
-          <h1 className="title">Dashboard</h1>
-        </div>
-
-        {selectedModule && (
-          <button
-            onClick={() => setSelectedModule(null)}
-            style={{
-              marginBottom: "16px",
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-          >
-            Back to Dashboard
-          </button>
-        )}
-
-        {renderMainContent()}
-      </div>
-
-      <div className="sidebar">
-        <input className="search" placeholder="Search..." />
-
-        <div className="section">
-          <h4>Section Heading</h4>
-          <ul>
-            <li>Title</li>
-            <li>Title</li>
-            <li>Title</li>
-          </ul>
-        </div>
-
-        <div className="section">
-          <h4>Section Heading</h4>
-          <ul>
-            <li>Title</li>
-            <li>Title</li>
-          </ul>
-        </div>
-
-        <button className="logout" onClick={handleLogout}>
-          Logout
+        <button type="submit">
+          {isEditing ? "Update Farmer" : "Add Farmer"}
         </button>
-      </div>
+      </form>
+
+      <table border="1" cellPadding="10" style={{ width: "100%" }}>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Address</th>
+            <th>Bean Types</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {farmers.length > 0 ? (
+            farmers.map((farmer) => (
+              <tr key={farmer.id}>
+                <td>{farmer.name}</td>
+                <td>{farmer.age}</td>
+                <td>{farmer.address}</td>
+                <td>{farmer.beans.join(", ")}</td>
+                <td>
+                  <button onClick={() => handleEdit(farmer)}>Edit</button>
+                  <button onClick={() => handleDelete(farmer.id)}>Delete</button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5">No farmers found.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-export default App;
+export default FarmerManagement;

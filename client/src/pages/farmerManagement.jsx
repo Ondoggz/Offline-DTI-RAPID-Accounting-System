@@ -1,21 +1,13 @@
 import { useState } from "react";
 
-const beanOptions = [
-  "Arabica",
-  "Robusta",
-  "Excelsa",
-  "Liberica",
-  "Mongo Beans",
-];
-
-function FarmerManagement() {
+function FarmerManagement({ beans = [] }) {
   const [farmers, setFarmers] = useState([
     {
       id: 1,
       name: "Juan Dela Cruz",
       age: 45,
       address: "Bukidnon",
-      beans: ["Mongo Beans", "Arabica"],
+      beans: ["Arabica", "Excelsa"],
     },
     {
       id: 2,
@@ -69,8 +61,10 @@ function FarmerManagement() {
     }
 
     const farmerData = {
-      ...form,
+      id: isEditing ? form.id : Date.now(),
+      name: form.name,
       age: Number(form.age),
+      address: form.address,
       beans: cleanedBeans,
     };
 
@@ -78,13 +72,8 @@ function FarmerManagement() {
       setFarmers((prev) =>
         prev.map((farmer) => (farmer.id === form.id ? farmerData : farmer))
       );
-      setIsEditing(false);
     } else {
-      const newFarmer = {
-        ...farmerData,
-        id: Date.now(),
-      };
-      setFarmers((prev) => [...prev, newFarmer]);
+      setFarmers((prev) => [...prev, farmerData]);
     }
 
     setForm({
@@ -94,6 +83,8 @@ function FarmerManagement() {
       address: "",
       beans: [""],
     });
+
+    setIsEditing(false);
   };
 
   const handleEdit = (farmer) => {
@@ -102,17 +93,14 @@ function FarmerManagement() {
       name: farmer.name,
       age: farmer.age,
       address: farmer.address,
-      beans: farmer.beans && farmer.beans.length > 0 ? farmer.beans : [""],
+      beans: farmer.beans?.length ? farmer.beans : [""],
     });
     setIsEditing(true);
   };
 
   const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this farmer?"
-    );
-    if (confirmDelete) {
-      setFarmers((prev) => prev.filter((farmer) => farmer.id !== id));
+    if (window.confirm("Delete this farmer?")) {
+      setFarmers((prev) => prev.filter((f) => f.id !== id));
     }
   };
 
@@ -146,56 +134,26 @@ function FarmerManagement() {
         />
 
         <div style={{ margin: "10px 0" }}>
-          <p style={{ marginBottom: "8px" }}>Bean Types</p>
+          <p>Bean Types</p>
 
           {form.beans.map((bean, index) => (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "8px",
-              }}
-            >
+            <div key={index} style={{ display: "flex", gap: "8px" }}>
               <select
                 value={bean}
                 onChange={(e) => handleBeanChange(index, e.target.value)}
               >
                 <option value="">Select bean type</option>
-                {beanOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                {beans.map((b) => (
+                  <option key={b.id} value={b.name}>
+                    {b.name}
                   </option>
                 ))}
               </select>
 
-              <button
-                type="button"
-                onClick={addBeanField}
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  fontSize: "18px",
-                  cursor: "pointer",
-                }}
-                title="Add another bean type"
-              >
-                +
-              </button>
+              <button type="button" onClick={addBeanField}>+</button>
 
               {form.beans.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeBeanField(index)}
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    fontSize: "18px",
-                    cursor: "pointer",
-                  }}
-                  title="Remove bean type"
-                >
+                <button type="button" onClick={() => removeBeanField(index)}>
                   -
                 </button>
               )}
@@ -214,29 +172,23 @@ function FarmerManagement() {
             <th>Name</th>
             <th>Age</th>
             <th>Address</th>
-            <th>Bean Types</th>
+            <th>Beans</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {farmers.length > 0 ? (
-            farmers.map((farmer) => (
-              <tr key={farmer.id}>
-                <td>{farmer.name}</td>
-                <td>{farmer.age}</td>
-                <td>{farmer.address}</td>
-                <td>{farmer.beans.join(", ")}</td>
-                <td>
-                  <button onClick={() => handleEdit(farmer)}>Edit</button>
-                  <button onClick={() => handleDelete(farmer.id)}>Delete</button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="5">No farmers found.</td>
+          {farmers.map((f) => (
+            <tr key={f.id}>
+              <td>{f.name}</td>
+              <td>{f.age}</td>
+              <td>{f.address}</td>
+              <td>{f.beans.join(", ")}</td>
+              <td>
+                <button onClick={() => handleEdit(f)}>Edit</button>
+                <button onClick={() => handleDelete(f.id)}>Delete</button>
+              </td>
             </tr>
-          )}
+          ))}
         </tbody>
       </table>
     </div>
