@@ -50,11 +50,14 @@ function App() {
   };
 
   const resetInactivityTimer = () => {
-    if (!localStorage.getItem("token")) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
     localStorage.setItem("lastActivity", Date.now().toString());
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
     timeoutRef.current = setTimeout(() => {
       clearSession();
@@ -74,9 +77,7 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(
-              `${import.meta.env.VITE_API_URL}/auth/me`
-            );
+            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
 
             if (!res.ok) {
               clearSession();
@@ -85,12 +86,11 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remaining =
-                SESSION_TIMEOUT - (now - Number(lastActivity));
+              const remainingTime = SESSION_TIMEOUT - (now - Number(lastActivity));
 
               timeoutRef.current = setTimeout(() => {
                 clearSession();
-              }, remaining);
+              }, remainingTime);
             }
           } catch {
             clearSession();
@@ -110,16 +110,26 @@ function App() {
 
     initializeApp();
 
-    const events = ["mousemove", "keydown", "click", "scroll"];
+    const activityEvents = ["mousemove", "keydown", "click", "scroll"];
 
-    const handleActivity = () => resetInactivityTimer();
+    const handleActivity = () => {
+      if (localStorage.getItem("token")) {
+        resetInactivityTimer();
+      }
+    };
 
-    events.forEach((e) => window.addEventListener(e, handleActivity));
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, handleActivity);
+    });
 
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, []);
 
