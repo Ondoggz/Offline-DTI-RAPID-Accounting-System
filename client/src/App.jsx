@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import Login from "./pages/Login";
+import Login from "./pages/login";
+import FarmerManagement from "./pages/farmerManagement";
+import BeanManagement from "./pages/beanManagement";
 import AdminPage from "./pages/AdminPage";
 import ModulePage from "./pages/ModulePage";
 import { authFetch } from "./utils/authFetch";
@@ -137,6 +139,8 @@ function App() {
               <div className="modules">
                 {[
                   ...(isAdmin ? ["admin"] : []),
+                  "farmers",
+                  "beans",
                   1,
                   2,
                   3,
@@ -147,17 +151,23 @@ function App() {
                   <div
                     key={item}
                     className="module-card"
-                    onClick={() =>
-                      item === "admin"
-                        ? navigate("/admin")
-                        : navigate(`/module/${item}`)
-                    }
+                    onClick={() => {
+                      if (item === "admin") return navigate("/admin");
+                      if (item === "farmers") return navigate("/farmers");
+                      if (item === "beans") return navigate("/beans");
+
+                      return navigate(`/module/${item}`);
+                    }}
                     style={{ cursor: "pointer" }}
                   >
                     <div className="icon">📄</div>
                     <p>
                       {item === "admin"
                         ? "Admin"
+                        : item === "farmers"
+                        ? "Farmer Management"
+                        : item === "beans"
+                        ? "Bean Management"
                         : `Module ${item}`}
                     </p>
                   </div>
@@ -168,18 +178,13 @@ function App() {
                 <p>{message}</p>
                 {dbTime && <p>Database time: {dbTime}</p>}
                 {currentUser && (
-                  <p>
-                    Logged in as: {currentUser.username}
-                  </p>
+                  <p>Logged in as: {currentUser.username}</p>
                 )}
               </div>
             </div>
 
             <div className="sidebar">
-              <input
-                className="search"
-                placeholder="Search..."
-              />
+              <input className="search" placeholder="Search..." />
 
               <button className="logout" onClick={handleLogout}>
                 Logout
@@ -189,10 +194,16 @@ function App() {
         }
       />
 
-      {/* ADMIN PAGE */}
+      {/* FARMERS */}
+      <Route path="/farmers" element={<FarmerManagement />} />
+
+      {/* BEANS */}
+      <Route path="/beans" element={<BeanManagement />} />
+
+      {/* ADMIN */}
       <Route path="/admin" element={<AdminPage />} />
 
-      {/* MODULE PAGE */}
+      {/* OTHER MODULES */}
       <Route path="/module/:id" element={<ModulePage />} />
     </Routes>
   );
