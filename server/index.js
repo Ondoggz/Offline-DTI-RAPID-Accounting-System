@@ -3,6 +3,7 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import authRoutes from "./src/routes/auth.js";
+import userRoutes from "./src/routes/users.js";
 import { protect } from "./src/middleware/authMiddleware.js";
 
 const app = express();
@@ -21,6 +22,7 @@ app.get("/api", (req, res) => {
 
 // Auth routes
 app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
 
 // Example protected route
 app.get("/protected", protect, (req, res) => {
