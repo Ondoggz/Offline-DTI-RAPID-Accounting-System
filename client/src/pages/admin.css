@@ -1,0 +1,83 @@
+.admin-container {
+  padding: 24px;
+  font-family: Arial, sans-serif;
+  background: #f5f6fa;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.admin-container h1 {
+  margin-bottom: 20px;
+  color: #2f3640;
+}
+
+/* CARD SECTIONS */
+.admin-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* INPUTS */
+.admin-card input,
+.admin-card select {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  outline: none;
+}
+
+.admin-card input:focus,
+.admin-card select:focus {
+  border-color: #40739e;
+}
+
+/* BUTTON */
+.admin-btn {
+  background: #273c75;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.admin-btn:hover {
+  background: #192a56;
+}
+
+/* USER LIST */
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f1f2f6;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+/* DELETE BUTTON */
+.delete-btn {
+  background: #e84118;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background: #c23616;
+}
