@@ -1,23 +1,6 @@
 import { useState } from "react";
 
-function BeanManagement() {
-  const [beans, setBeans] = useState([
-    {
-      id: 1,
-      name: "Mongo Beans",
-      pricePerUnit: 120,
-      unit: "kg",
-      farmers: ["Juan Dela Cruz", "Maria Santos"],
-    },
-    {
-      id: 2,
-      name: "Arabica Beans",
-      pricePerUnit: 180,
-      unit: "kg",
-      farmers: ["Pedro Reyes"],
-    },
-  ]);
-
+function BeanManagement({ beans, setBeans }) {
   const [form, setForm] = useState({
     id: null,
     name: "",
@@ -100,15 +83,7 @@ function BeanManagement() {
     <div style={{ padding: "20px" }}>
       <h2>Bean Management</h2>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "grid",
-          gap: "10px",
-          marginBottom: "20px",
-          maxWidth: "700px",
-        }}
-      >
+      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "10px", marginBottom: "20px", maxWidth: "700px" }}>
         <input
           type="text"
           name="name"
@@ -128,7 +103,7 @@ function BeanManagement() {
         <input
           type="text"
           name="unit"
-          placeholder="Unit (kg, sack, box, etc.)"
+          placeholder="Unit"
           value={form.unit}
           onChange={handleChange}
         />
@@ -171,11 +146,7 @@ function BeanManagement() {
                 <td>{bean.name}</td>
                 <td>{bean.pricePerUnit}</td>
                 <td>{bean.unit}</td>
-                <td>
-                  {bean.farmers.length > 0
-                    ? bean.farmers.join(", ")
-                    : "No farmers listed"}
-                </td>
+                <td>{bean.farmers.length ? bean.farmers.join(", ") : "No farmers listed"}</td>
                 <td>
                   <button onClick={() => handleEdit(bean)}>Edit</button>{" "}
                   <button onClick={() => handleDelete(bean.id)}>Delete</button>

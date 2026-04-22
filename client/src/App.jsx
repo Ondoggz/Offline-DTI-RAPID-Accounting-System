@@ -14,6 +14,30 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
 
+  const [beans, setBeans] = useState([
+    {
+      id: 1,
+      name: "Arabica",
+      pricePerUnit: 180,
+      unit: "kg",
+      farmers: ["Juan Dela Cruz"],
+    },
+    {
+      id: 2,
+      name: "Robusta",
+      pricePerUnit: 150,
+      unit: "kg",
+      farmers: ["Maria Santos"],
+    },
+    {
+      id: 3,
+      name: "Excelsa",
+      pricePerUnit: 170,
+      unit: "kg",
+      farmers: [],
+    },
+  ]);
+
   const timeoutRef = useRef(null);
 
   const clearSession = () => {
@@ -26,11 +50,14 @@ function App() {
   };
 
   const resetInactivityTimer = () => {
-    if (!localStorage.getItem("token")) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
     localStorage.setItem("lastActivity", Date.now().toString());
 
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
     timeoutRef.current = setTimeout(() => {
       clearSession();
@@ -50,9 +77,7 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(
-              `${import.meta.env.VITE_API_URL}/auth/me`
-            );
+            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
 
             if (!res.ok) {
               clearSession();
@@ -61,12 +86,11 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remaining =
-                SESSION_TIMEOUT - (now - Number(lastActivity));
+              const remainingTime = SESSION_TIMEOUT - (now - Number(lastActivity));
 
               timeoutRef.current = setTimeout(() => {
                 clearSession();
-              }, remaining);
+              }, remainingTime);
             }
           } catch {
             clearSession();
@@ -86,16 +110,26 @@ function App() {
 
     initializeApp();
 
-    const events = ["mousemove", "keydown", "click", "scroll"];
+    const activityEvents = ["mousemove", "keydown", "click", "scroll"];
 
-    const handleActivity = () => resetInactivityTimer();
+    const handleActivity = () => {
+      if (localStorage.getItem("token")) {
+        resetInactivityTimer();
+      }
+    };
 
-    events.forEach((e) => window.addEventListener(e, handleActivity));
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, handleActivity);
+    });
 
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, []);
 
@@ -130,11 +164,11 @@ function App() {
 
   const renderMainContent = () => {
     if (selectedModule === "farmers") {
-      return <FarmerManagement />;
+      return <FarmerManagement beans={beans} />;
     }
 
     if (selectedModule === "beans") {
-      return <BeanManagement />;
+      return <BeanManagement beans={beans} setBeans={setBeans} />;
     }
 
     if (selectedModule === "admin") {
