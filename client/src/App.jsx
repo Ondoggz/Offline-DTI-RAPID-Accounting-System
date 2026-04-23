@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import Login from "./pages/Login";
-import AdminPage from "./pages/AdminPage";
-import ModulePage from "./pages/ModulePage";
+import Login from "./pages/login";
+import FarmerManagement from "./pages/farmerManagement";
+import BeanManagement from "./pages/beanManagement";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
-
-import { Routes, Route, useNavigate } from "react-router-dom";
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
@@ -14,8 +12,15 @@ function App() {
   const [dbTime, setDbTime] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [selectedModule, setSelectedModule] = useState(null);
 
-  const navigate = useNavigate();
+  // 🔥 SHARED BEANS STATE (this is what syncs everything)
+  const [beans, setBeans] = useState([
+    { id: 1, name: "Arabica", pricePerUnit: 180, unit: "kg", farmers: [] },
+    { id: 2, name: "Robusta", pricePerUnit: 150, unit: "kg", farmers: [] },
+    { id: 3, name: "Excelsa", pricePerUnit: 170, unit: "kg", farmers: [] },
+  ]);
+
   const timeoutRef = useRef(null);
 
   const clearSession = () => {
@@ -24,6 +29,7 @@ function App() {
     localStorage.removeItem("lastActivity");
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setSelectedModule(null);
   };
 
   const resetInactivityTimer = () => {
@@ -33,9 +39,7 @@ function App() {
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    timeoutRef.current = setTimeout(() => {
-      clearSession();
-    }, SESSION_TIMEOUT);
+    timeoutRef.current = setTimeout(clearSession, SESSION_TIMEOUT);
   };
 
   useEffect(() => {
@@ -51,9 +55,7 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(
-              `${import.meta.env.VITE_API_URL}/auth/me`
-            );
+            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
 
             if (!res.ok) {
               clearSession();
@@ -65,9 +67,7 @@ function App() {
               const remaining =
                 SESSION_TIMEOUT - (now - Number(lastActivity));
 
-              timeoutRef.current = setTimeout(() => {
-                clearSession();
-              }, remaining);
+              timeoutRef.current = setTimeout(clearSession, remaining);
             }
           } catch {
             clearSession();
@@ -89,17 +89,16 @@ function App() {
 
     const events = ["mousemove", "keydown", "click", "scroll"];
 
-    const handleActivity = () => resetInactivityTimer();
+    const handleActivity = () => {
+      if (localStorage.getItem("token")) {
+        resetInactivityTimer();
+      }
+    };
 
-    events.forEach((e) =>
-      window.addEventListener(e, handleActivity)
-    );
+    events.forEach((e) => window.addEventListener(e, handleActivity));
 
     return () => {
-      events.forEach((e) =>
-        window.removeEventListener(e, handleActivity)
-      );
-
+      events.forEach((e) => window.removeEventListener(e, handleActivity));
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
@@ -111,9 +110,7 @@ function App() {
     resetInactivityTimer();
   };
 
-  const handleLogout = () => {
-    clearSession();
-  };
+  const handleLogout = () => clearSession();
 
   if (!isLoggedIn) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
@@ -121,80 +118,93 @@ function App() {
 
   const isAdmin = currentUser?.role === "admin";
 
+  const modules = [
+    ...(isAdmin ? ["admin"] : []),
+    "farmers",
+    "beans",
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+  ];
+
+  const renderMainContent = () => {
+    if (selectedModule === "farmers") {
+      return <FarmerManagement beans={beans} />;
+    }
+
+    if (selectedModule === "beans") {
+      return <BeanManagement beans={beans} setBeans={setBeans} />;
+    }
+
+    if (selectedModule === "admin") {
+      return <h2>Admin Module</h2>;
+    }
+
+    if (typeof selectedModule === "number") {
+      return <h2>{`Module ${selectedModule}`}</h2>;
+    }
+
+    return (
+      <>
+        <div className="modules">
+          {modules.map((item) => (
+            <div
+              key={item}
+              className="module-card"
+              onClick={() => setSelectedModule(item)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="icon">📄</div>
+              <p>
+                {item === "admin"
+                  ? "Admin"
+                  : item === "farmers"
+                  ? "Farmer Management"
+                  : item === "beans"
+                  ? "Bean Management"
+                  : `Module ${item}`}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="status">
+          <p>{message}</p>
+          {dbTime && <p>Database time: {dbTime}</p>}
+          <p>Logged in as: {currentUser.username}</p>
+        </div>
+      </>
+    );
+  };
+
   return (
-    <Routes>
-      {/* DASHBOARD */}
-      <Route
-        path="/"
-        element={
-          <div className="app-layout">
-            <div className="main">
-              <div className="header">
-                <div className="logo">Logo</div>
-                <h1 className="title">Dashboard</h1>
-              </div>
+    <div className="app-layout">
+      <div className="main">
+        <div className="header">
+          <div className="logo">Logo</div>
+          <h1 className="title">Dashboard</h1>
+        </div>
 
-              <div className="modules">
-                {[
-                  ...(isAdmin ? ["admin"] : []),
-                  1,
-                  2,
-                  3,
-                  4,
-                  5,
-                  6,
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="module-card"
-                    onClick={() =>
-                      item === "admin"
-                        ? navigate("/admin")
-                        : navigate(`/module/${item}`)
-                    }
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className="icon">📄</div>
-                    <p>
-                      {item === "admin"
-                        ? "Admin"
-                        : `Module ${item}`}
-                    </p>
-                  </div>
-                ))}
-              </div>
+        {selectedModule && (
+          <button onClick={() => setSelectedModule(null)}>
+            Back to Dashboard
+          </button>
+        )}
 
-              <div className="status">
-                <p>{message}</p>
-                {dbTime && <p>Database time: {dbTime}</p>}
-                {currentUser && (
-                  <p>
-                    Logged in as: {currentUser.username}
-                  </p>
-                )}
-              </div>
-            </div>
+        {renderMainContent()}
+      </div>
 
-            <div className="sidebar">
-              <input
-                className="search"
-                placeholder="Search..."
-              />
+      <div className="sidebar">
+        <input className="search" placeholder="Search..." />
 
-              <button className="logout" onClick={handleLogout}>
-                Logout
-              </button>
-            </div>
-          </div>
-        }
-      />
-
-      {/* ADMIN PAGE */}
-      <Route path="/admin" element={<AdminPage />} />
-
-      {/* MODULE PAGE */}
-      <Route path="/module/:id" element={<ModulePage />} />
-    </Routes>
+        <button className="logout" onClick={handleLogout}>
+          Logout
+        </button>
+      </div>
+    </div>
   );
 }
 
