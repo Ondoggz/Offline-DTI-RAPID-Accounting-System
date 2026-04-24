@@ -1,0 +1,177 @@
+.delivery-container {
+  padding: 20px;
+}
+
+/* HEADER */
+.delivery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.delivery-header h2 {
+  font-weight: 500;
+}
+
+.back-icon {
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.menu-dots {
+  font-size: 18px;
+}
+
+/* ACTIONS */
+.delivery-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.add-btn {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  width: 250px;
+}
+
+/* LIST */
+.delivery-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.delivery-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.arrow {
+  font-size: 18px;
+}
+
+.delivery-container {
+  padding: 40px;
+  font-family: Arial, sans-serif;
+  color: #ddd;
+}
+/* TITLE CENTER */
+.delivery-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+/* FORM GRID */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 80px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 40px;
+  max-width: 850px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: #bbb;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #666;
+  border-radius: 4px;
+  background: #222;
+  color: #fff;
+}
+
+.proof-record-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  margin-top: 30px;
+  max-width: 850px;
+  margin-left: auto;
+  margin-right: auto;
+  align-items: start;
+}
+
+.proof-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-box {
+  width: 100%;
+  height: 150px;
+  border: 1px dashed #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eee;
+  color: #333;
+  border-radius: 6px;
+}
+
+.recorded {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recorded input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #666;
+  background: #222;
+  color: white;
+  border-radius: 4px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 40px;
+}
+
+.form-actions button {
+  padding: 9px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.save-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.cancel-btn {
+  background: #bbb;
+}
