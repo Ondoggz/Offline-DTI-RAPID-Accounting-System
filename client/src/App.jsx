@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import Login from "./pages/login";
+import AdminPage from "./pages/AdminPage";
 import FarmerManagement from "./pages/farmerManagement";
 import BeanManagement from "./pages/beanManagement";
+import DeliveryEntry from "./pages/DeliveryEntry";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
 
@@ -122,12 +124,12 @@ function App() {
     ...(isAdmin ? ["admin"] : []),
     "farmers",
     "beans",
+    "delivery",
     1,
     2,
     3,
     4,
     5,
-    6,
   ];
 
   const renderMainContent = () => {
@@ -140,9 +142,13 @@ function App() {
     }
 
     if (selectedModule === "admin") {
-      return <h2>Admin Module</h2>;
+      return <AdminPage />;
     }
 
+    if (selectedModule === "delivery") {
+      return <DeliveryEntry />;
+    }
+    
     if (typeof selectedModule === "number") {
       return <h2>{`Module ${selectedModule}`}</h2>;
     }
@@ -165,6 +171,8 @@ function App() {
                   ? "Farmer Management"
                   : item === "beans"
                   ? "Bean Management"
+                  : item === "delivery"
+                  ? "Delivery Entry"
                   : `Module ${item}`}
               </p>
             </div>
