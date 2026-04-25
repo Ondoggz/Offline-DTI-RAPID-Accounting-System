@@ -6,11 +6,11 @@ import {
   deleteBean,
 } from "../controllers/beanController.js";
 
-import authMiddleware from "../middleware/authMiddleware.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(protect);
 
 router.post("/", createBean);
 router.get("/", getBeans);

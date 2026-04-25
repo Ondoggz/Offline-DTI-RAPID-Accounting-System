@@ -1,40 +1,56 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 function FarmerManagement({ beans = [] }) {
-  const [farmers, setFarmers] = useState([
-    {
-      id: 1,
-      name: "Juan Dela Cruz",
-      age: 45,
-      address: "Bukidnon",
-      beans: ["Arabica", "Excelsa"],
-    },
-    {
-      id: 2,
-      name: "Maria Santos",
-      age: 39,
-      address: "Misamis Oriental",
-      beans: ["Robusta"],
-    },
-  ]);
+  const [farmers, setFarmers] = useState([]);
 
   const [form, setForm] = useState({
     id: null,
     name: "",
     age: "",
     address: "",
-    beans: [""],
+    beans: [""], // stores bean IDs now
   });
 
   const [isEditing, setIsEditing] = useState(false);
+
+  const token = localStorage.getItem("token");
+
+  // 🔄 LOAD FARMERS (POPULATED FROM BACKEND)
+  useEffect(() => {
+    const fetchFarmers = async () => {
+      try {
+        const res = await axios.get("http://localhost:3000/api/farmers", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        setFarmers(
+          res.data.map((f) => ({
+            id: f._id,
+            name: f.name,
+            age: f.age,
+            address: f.address,
+            beans: f.beans || [], // populated objects
+          }))
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchFarmers();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // 🔥 STORE BEAN IDs (IMPORTANT CHANGE)
   const handleBeanChange = (index, value) => {
     const updatedBeans = [...form.beans];
-    updatedBeans[index] = value;
+    updatedBeans[index] = value; // now storing ObjectId
     setForm({ ...form, beans: updatedBeans });
   };
 
@@ -50,7 +66,8 @@ function FarmerManagement({ beans = [] }) {
     });
   };
 
-  const handleSubmit = (e) => {
+  // 🔥 CREATE / UPDATE (NOW SENDING OBJECTIDS)
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const cleanedBeans = form.beans.filter((bean) => bean.trim() !== "");
@@ -61,30 +78,58 @@ function FarmerManagement({ beans = [] }) {
     }
 
     const farmerData = {
-      id: isEditing ? form.id : Date.now(),
       name: form.name,
       age: Number(form.age),
       address: form.address,
-      beans: cleanedBeans,
+      beans: cleanedBeans, // ObjectIds now
     };
 
-    if (isEditing) {
-      setFarmers((prev) =>
-        prev.map((farmer) => (farmer.id === form.id ? farmerData : farmer))
+    try {
+      if (isEditing) {
+        await axios.put(
+          `http://localhost:3000/api/farmers/${form.id}`,
+          farmerData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      } else {
+        await axios.post(
+          "http://localhost:3000/api/farmers",
+          farmerData,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+
+      // refresh
+      const res = await axios.get("http://localhost:3000/api/farmers", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setFarmers(
+        res.data.map((f) => ({
+          id: f._id,
+          name: f.name,
+          age: f.age,
+          address: f.address,
+          beans: f.beans || [],
+        }))
       );
-    } else {
-      setFarmers((prev) => [...prev, farmerData]);
+
+      setForm({
+        id: null,
+        name: "",
+        age: "",
+        address: "",
+        beans: [""],
+      });
+
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
     }
-
-    setForm({
-      id: null,
-      name: "",
-      age: "",
-      address: "",
-      beans: [""],
-    });
-
-    setIsEditing(false);
   };
 
   const handleEdit = (farmer) => {
@@ -93,14 +138,31 @@ function FarmerManagement({ beans = [] }) {
       name: farmer.name,
       age: farmer.age,
       address: farmer.address,
-      beans: farmer.beans?.length ? farmer.beans : [""],
+
+      // convert populated beans → IDs
+      beans: farmer.beans?.length
+        ? farmer.beans.map((b) => b._id)
+        : [""],
     });
+
     setIsEditing(true);
   };
 
-  const handleDelete = (id) => {
+  // ❌ DELETE
+  const handleDelete = async (id) => {
     if (window.confirm("Delete this farmer?")) {
-      setFarmers((prev) => prev.filter((f) => f.id !== id));
+      try {
+        await axios.delete(
+          `http://localhost:3000/api/farmers/${id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        setFarmers((prev) => prev.filter((f) => f.id !== id));
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -143,9 +205,11 @@ function FarmerManagement({ beans = [] }) {
                 onChange={(e) => handleBeanChange(index, e.target.value)}
               >
                 <option value="">Select bean type</option>
+
+                {/* now uses real IDs */}
                 {beans.map((b) => (
-                  <option key={b.id} value={b.name}>
-                    {b.name}
+                  <option key={b._id || b.id} value={b._id || b.id}>
+                    {b.beanName || b.name}
                   </option>
                 ))}
               </select>
@@ -176,16 +240,24 @@ function FarmerManagement({ beans = [] }) {
             <th>Actions</th>
           </tr>
         </thead>
+
         <tbody>
           {farmers.map((f) => (
             <tr key={f.id}>
               <td>{f.name}</td>
               <td>{f.age}</td>
               <td>{f.address}</td>
-              <td>{f.beans.join(", ")}</td>
+
+              {/* populated beans */}
+              <td>
+                {f.beans.map((b) => b.beanName || b.name).join(", ")}
+              </td>
+
               <td>
                 <button onClick={() => handleEdit(f)}>Edit</button>
-                <button onClick={() => handleDelete(f.id)}>Delete</button>
+                <button onClick={() => handleDelete(f.id)}>
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
