@@ -3,17 +3,31 @@ import Farmer from "../models/Farmer.js";
 // CREATE
 export const createFarmer = async (req, res) => {
   try {
-    const farmer = await Farmer.create(req.body);
-    res.status(201).json(farmer);
+    const farmer = await Farmer.create({
+      farmerID: req.body.farmerID,
+      name: req.body.name,
+      age: req.body.age,
+      address: req.body.address,
+      contactNumber: req.body.contactNumber,
+      emailAddress: req.body.emailAddress,
+      beans: req.body.beans,
+    });
+
+    const populatedFarmer = await Farmer.findById(farmer._id).populate("beans");
+
+    res.status(201).json(populatedFarmer);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
 
-// GET (with beans populated)
+// GET
 export const getFarmers = async (req, res) => {
   try {
-    const farmers = await Farmer.find().populate("beans");
+    const farmers = await Farmer.find()
+      .populate("beans")
+      .sort({ createdAt: -1 });
+
     res.json(farmers);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -25,9 +39,20 @@ export const updateFarmer = async (req, res) => {
   try {
     const farmer = await Farmer.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+      {
+        farmerID: req.body.farmerID,
+        name: req.body.name,
+        age: req.body.age,
+        address: req.body.address,
+        contactNumber: req.body.contactNumber,
+        emailAddress: req.body.emailAddress,
+        beans: req.body.beans,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).populate("beans");
 
     if (!farmer) {
       return res.status(404).json({ message: "Farmer not found" });

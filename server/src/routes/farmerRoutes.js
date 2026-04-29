@@ -10,13 +10,18 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// 🔐 protect all routes
 router.use(protect);
 
-router.route("/")
+// GET all farmers / CREATE farmer
+router
+  .route("/")
   .get(getFarmers)
   .post(createFarmer);
 
-router.route("/:id")
+// UPDATE farmer / DELETE farmer
+router
+  .route("/:id")
   .put(updateFarmer)
   .delete(deleteFarmer);
 
