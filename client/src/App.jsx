@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import Login from "./pages/login";
+import AdminPage from "./pages/AdminPage";
 import FarmerManagement from "./pages/farmerManagement";
 import BeanManagement from "./pages/beanManagement";
+import DeliveryEntry from "./pages/DeliveryEntry";
+import FormsGeneration from "./pages/formsGeneration";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
 
@@ -14,7 +17,6 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
 
-  // 🔥 SHARED BEANS STATE (this is what syncs everything)
   const [beans, setBeans] = useState([
     { id: 1, name: "Arabica", pricePerUnit: 180, unit: "kg", farmers: [] },
     { id: 2, name: "Robusta", pricePerUnit: 150, unit: "kg", farmers: [] },
@@ -64,9 +66,7 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remaining =
-                SESSION_TIMEOUT - (now - Number(lastActivity));
-
+              const remaining = SESSION_TIMEOUT - (now - Number(lastActivity));
               timeoutRef.current = setTimeout(clearSession, remaining);
             }
           } catch {
@@ -122,12 +122,13 @@ function App() {
     ...(isAdmin ? ["admin"] : []),
     "farmers",
     "beans",
+    "delivery",
+    "forms",
     1,
     2,
     3,
     4,
     5,
-    6,
   ];
 
   const renderMainContent = () => {
@@ -140,7 +141,15 @@ function App() {
     }
 
     if (selectedModule === "admin") {
-      return <h2>Admin Module</h2>;
+      return <AdminPage />;
+    }
+
+    if (selectedModule === "delivery") {
+      return <DeliveryEntry />;
+    }
+
+    if (selectedModule === "forms") {
+      return <FormsGeneration />;
     }
 
     if (typeof selectedModule === "number") {
@@ -165,6 +174,10 @@ function App() {
                   ? "Farmer Management"
                   : item === "beans"
                   ? "Bean Management"
+                  : item === "delivery"
+                  ? "Delivery Entry"
+                  : item === "forms"
+                  ? "Forms Generation"
                   : `Module ${item}`}
               </p>
             </div>

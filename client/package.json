@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "^1.15.2",
+    "docx": "^9.6.1",
+    "docxtemplater": "^3.68.6",
     "dotenv": "^17.4.2",
+    "file-saver": "^2.0.5",
+    "pizzip": "^3.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.1"
