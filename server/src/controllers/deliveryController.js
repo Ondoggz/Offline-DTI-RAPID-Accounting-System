@@ -34,3 +34,26 @@ export const getDeliveries = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// DELETE
+export const deleteDelivery = async (req, res) => {
+  try {
+    const ADMIN_PASSWORD = "admin123";
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (password !== ADMIN_PASSWORD) {
+      return res.status(403).json({ message: "Incorrect admin password" });
+    }
+
+    const deletedDelivery = await Delivery.findByIdAndDelete(id);
+
+    if (!deletedDelivery) {
+      return res.status(404).json({ message: "Delivery not found" });
+    }
+
+    res.json({ message: "Delivery deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
