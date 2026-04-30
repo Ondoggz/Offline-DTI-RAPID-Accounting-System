@@ -82,7 +82,6 @@ function DeliveryEntry() {
 
       setShowForm(false);
 
-      // reset form
       setForm({
         farmer: "",
         farmerContact: "",
@@ -101,6 +100,31 @@ function DeliveryEntry() {
       console.error(err);
     }
   };
+
+ // 🗑 DELETE DELIVERY
+const handleDelete = async (id) => {
+  const password = window.prompt("Enter admin password:");
+
+  if (!password) return;
+
+  try {
+    await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      data: {
+        password, // 🔥 required for backend check
+      },
+    });
+
+    const res = await axios.get("http://localhost:3000/api/deliveries");
+    setDeliveries(res.data);
+
+  } catch (err) {
+    console.error(err);
+    alert("Delete failed (wrong password or error)");
+  }
+};
 
   return (
     <div className="delivery-container">
@@ -126,6 +150,17 @@ function DeliveryEntry() {
                 <span>
                   {d.farmer} • {d.beanType} • {d.date?.slice(0, 10)}
                 </span>
+
+                <button
+                  className="delete-btn"
+                  onClick={() => {
+                    if (window.confirm("Delete this delivery entry?")) {
+                      handleDelete(d._id);
+                    }
+                  }}
+                >
+                  🗑 Delete
+                </button>
               </div>
             ))}
           </div>
@@ -136,7 +171,6 @@ function DeliveryEntry() {
       {showForm && (
         <div className="form-grid">
 
-          {/* FARMER */}
           <div className="form-group">
             <label>Farmer</label>
             <select name="farmer" onChange={handleChange} value={form.farmer}>
@@ -158,7 +192,6 @@ function DeliveryEntry() {
             />
           </div>
 
-          {/* BEAN */}
           <div className="form-group">
             <label>Bean Type</label>
             <select name="beanType" onChange={handleChange} value={form.beanType}>
@@ -217,7 +250,6 @@ function DeliveryEntry() {
             />
           </div>
 
-          {/* FILE UPLOAD */}
           <div className="form-group">
             <label>Proof of Delivery</label>
             <input
@@ -235,7 +267,6 @@ function DeliveryEntry() {
             />
           </div>
 
-          {/* ACTIONS */}
           <div className="form-actions">
             <button className="save-btn" onClick={handleSubmit}>
               Save
