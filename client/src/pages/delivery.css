@@ -175,3 +175,12 @@
 .cancel-btn {
   background: #bbb;
 }
+
+.delete-btn {
+  margin-left: 10px;
+  background: red;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+}
