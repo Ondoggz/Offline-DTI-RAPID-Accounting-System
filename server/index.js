@@ -10,6 +10,7 @@ import beanRoutes from "./src/routes/beanRoutes.js";
 import farmerRoutes from "./src/routes/farmerRoutes.js";
 import deliveryRoutes from "./src/routes/deliveryRoutes.js";
 import formsRoutes from "./src/routes/formsRoutes.js";
+import transactionRoutes from "./src/routes/transactionRoutes.js";
 
 import { protect } from "./src/middleware/authMiddleware.js";
 
@@ -40,6 +41,7 @@ app.get("/api", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/api/beans", beanRoutes);
+app.use("/api/transactions", transactionRoutes);
 app.use("/api/farmers", farmerRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/forms", formsRoutes);
