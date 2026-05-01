@@ -125,12 +125,7 @@ function App() {
     "beans",
     "delivery",
     "forms",
-    "transactions",
-    1,
-    2,
-    3,
-    4,
-    5,
+    "transactions"
   ];
 
   const renderMainContent = () => {
