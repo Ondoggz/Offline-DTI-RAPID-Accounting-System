@@ -5,6 +5,7 @@ import FarmerManagement from "./pages/farmerManagement";
 import BeanManagement from "./pages/beanManagement";
 import DeliveryEntry from "./pages/DeliveryEntry";
 import FormsGeneration from "./pages/formsGeneration";
+import TransactionHistory from "./pages/transactionHistory";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
 
@@ -124,6 +125,7 @@ function App() {
     "beans",
     "delivery",
     "forms",
+    "transactions",
     1,
     2,
     3,
@@ -152,6 +154,10 @@ function App() {
       return <FormsGeneration />;
     }
 
+    if (selectedModule === "transactions") {
+      return <TransactionHistory />;
+    }
+
     if (typeof selectedModule === "number") {
       return <h2>{`Module ${selectedModule}`}</h2>;
     }
@@ -178,6 +184,8 @@ function App() {
                   ? "Delivery Entry"
                   : item === "forms"
                   ? "Forms Generation"
+                  : item === "transactions"
+                  ? "Transaction History"
                   : `Module ${item}`}
               </p>
             </div>
