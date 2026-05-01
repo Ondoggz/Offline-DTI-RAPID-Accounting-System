@@ -1,4 +1,5 @@
 import Delivery from "../models/delivery.js";
+import Transaction from "../models/transaction.js";
 
 // CREATE
 export const createDelivery = async (req, res) => {
@@ -14,12 +15,22 @@ export const createDelivery = async (req, res) => {
       deliveryGuyContact: req.body.deliveryGuyContact,
       consigneeContact: req.body.consigneeContact,
       recordedBy: req.body.recordedBy,
-
-      // 📸 file path from multer
       proofOfDelivery: req.file ? req.file.filename : "",
     });
 
+    await Transaction.create({
+      type: "DELIVERY",
+      farmerName: newDelivery.farmer,
+      beanType: newDelivery.beanType,
+      amount: 0, // ⚠️ You don’t have pricing/volume yet
+      volume: 0,
+      date: newDelivery.date,
+      remarks: "Delivery recorded",
+      createdBy: req.user?.id, // from JWT
+    });
+
     res.status(201).json(newDelivery);
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
