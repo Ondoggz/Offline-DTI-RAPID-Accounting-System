@@ -3,7 +3,7 @@ import Login from "./pages/login";
 import AdminPage from "./pages/AdminPage";
 import FarmerManagement from "./pages/farmerManagement";
 import BeanManagement from "./pages/beanManagement";
-import DeliveryEntry from "./pages/DeliveryEntry";
+import DeliveryEntry from "./pages/deliveryEntry";
 import FormsGeneration from "./pages/formsGeneration";
 import TransactionHistory from "./pages/transactionHistory";
 import ReportModule from "./pages/ReportModule";
