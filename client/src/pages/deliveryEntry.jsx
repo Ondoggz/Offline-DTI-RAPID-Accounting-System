@@ -22,6 +22,7 @@ function DeliveryEntry() {
     deliveryGuyContact: "",
     consigneeContact: "",
     recordedBy: "",
+    volume: "", // ✅ ADDED
   });
 
   // 📥 LOAD DATA
@@ -53,6 +54,14 @@ function DeliveryEntry() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // 🧠 ADDED computed logic (no refactor)
+  const selectedBean = beans.find(
+    (b) => b.beanName === form.beanType
+  );
+
+  const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
+  const totalAmount = Number(form.volume || 0) * pricePerUnit;
+
   // 📤 SUBMIT DELIVERY
   const handleSubmit = async () => {
     try {
@@ -62,11 +71,15 @@ function DeliveryEntry() {
         data.append(key, form[key]);
       });
 
+      // ✅ ADD computed values
+      data.append("pricePerUnit", pricePerUnit);
+      data.append("totalAmount", totalAmount);
+
       if (file) {
         data.append("proofOfDelivery", file);
       }
 
-      await axios.post(
+      const res = await axios.post(
         "http://localhost:3000/api/deliveries",
         data,
         {
@@ -77,8 +90,13 @@ function DeliveryEntry() {
         }
       );
 
-      const res = await axios.get("http://localhost:3000/api/deliveries");
-      setDeliveries(res.data);
+      // ✅ FIX: instant UI update (no reload needed)
+      if (res.data && res.data._id) {
+        setDeliveries((prev) => [res.data, ...prev]);
+      } else {
+        const refresh = await axios.get("http://localhost:3000/api/deliveries");
+        setDeliveries(refresh.data);
+      }
 
       setShowForm(false);
 
@@ -93,6 +111,7 @@ function DeliveryEntry() {
         deliveryGuyContact: "",
         consigneeContact: "",
         recordedBy: "",
+        volume: "", // ✅ reset
       });
 
       setFile(null);
@@ -101,30 +120,30 @@ function DeliveryEntry() {
     }
   };
 
- // 🗑 DELETE DELIVERY
-const handleDelete = async (id) => {
-  const password = window.prompt("Enter admin password:");
+  // 🗑 DELETE DELIVERY
+  const handleDelete = async (id) => {
+    const password = window.prompt("Enter admin password:");
 
-  if (!password) return;
+    if (!password) return;
 
-  try {
-    await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      data: {
-        password, // 🔥 required for backend check
-      },
-    });
+    try {
+      await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        data: {
+          password,
+        },
+      });
 
-    const res = await axios.get("http://localhost:3000/api/deliveries");
-    setDeliveries(res.data);
+      const res = await axios.get("http://localhost:3000/api/deliveries");
+      setDeliveries(res.data);
 
-  } catch (err) {
-    console.error(err);
-    alert("Delete failed (wrong password or error)");
-  }
-};
+    } catch (err) {
+      console.error(err);
+      alert("Delete failed (wrong password or error)");
+    }
+  };
 
   return (
     <div className="delivery-container">
@@ -203,6 +222,30 @@ const handleDelete = async (id) => {
               ))}
             </select>
           </div>
+
+          {/* ✅ ADDED FIELDS (no changes elsewhere) */}
+
+          <div className="form-group">
+            <label>Volume</label>
+            <input
+              type="number"
+              name="volume"
+              value={form.volume}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Price per Unit</label>
+            <input value={pricePerUnit} readOnly />
+          </div>
+
+          <div className="form-group">
+            <label>Total Amount</label>
+            <input value={totalAmount} readOnly />
+          </div>
+
+          {/* rest unchanged */}
 
           <div className="form-group">
             <label>Courier</label>
