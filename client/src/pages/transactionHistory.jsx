@@ -6,7 +6,9 @@ function TransactionHistory() {
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const res = await authFetch("/api/transactions");
+      const res = await authFetch(
+    `${import.meta.env.VITE_API_URL}/api/transactions`
+      );
       const data = await res.json();
       setTransactions(data.data || []);
     };
