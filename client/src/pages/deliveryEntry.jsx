@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { authFetch } from "../utils/authFetch";
 import "./delivery.css";
 
 function DeliveryEntry() {
@@ -9,7 +9,6 @@ function DeliveryEntry() {
   const [beans, setBeans] = useState([]);
   const [file, setFile] = useState(null);
 
-  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const getRecordedBy = () => {
@@ -29,33 +28,32 @@ function DeliveryEntry() {
     consignee: "",
     deliveryGuyContact: "",
     consigneeContact: "",
-    recordedBy: getRecordedBy(), // ✅ FULL NAME
+    recordedBy: getRecordedBy(),
     volume: "",
   });
 
+  // 🔄 LOAD DATA
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dRes, fRes, bRes] = await Promise.all([
-          axios.get("http://localhost:3000/api/deliveries"),
-          axios.get("http://localhost:3000/api/farmers", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get("http://localhost:3000/api/beans", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const dRes = await authFetch("/api/deliveries");
+        const fRes = await authFetch("/api/farmers");
+        const bRes = await authFetch("/api/beans");
 
-        setDeliveries(dRes.data);
-        setFarmers(fRes.data);
-        setBeans(bRes.data);
+        const deliveriesData = await dRes.json();
+        const farmersData = await fRes.json();
+        const beansData = await bRes.json();
+
+        setDeliveries(deliveriesData);
+        setFarmers(farmersData);
+        setBeans(beansData);
       } catch (err) {
         console.error("FETCH ERROR:", err);
       }
     };
 
     fetchData();
-  }, [token]);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -80,7 +78,6 @@ function DeliveryEntry() {
   };
 
   const selectedBean = beans.find((b) => b.beanName === form.beanType);
-
   const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
   const totalAmount = Number(form.volume || 0) * pricePerUnit;
 
@@ -95,13 +92,14 @@ function DeliveryEntry() {
       consignee: "",
       deliveryGuyContact: "",
       consigneeContact: "",
-      recordedBy: getRecordedBy(), // ✅ FULL NAME RESET
+      recordedBy: getRecordedBy(),
       volume: "",
     });
 
     setFile(null);
   };
 
+  // 🔥 SUBMIT
   const handleSubmit = async () => {
     try {
       const data = new FormData();
@@ -117,24 +115,18 @@ function DeliveryEntry() {
         data.append("proofOfDelivery", file);
       }
 
-      const res = await axios.post(
-        "http://localhost:3000/api/deliveries",
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const res = await authFetch("/api/deliveries", {
+        method: "POST",
+        body: data,
+      });
 
-      const savedDelivery = res.data.data || res.data;
+      const saved = await res.json();
 
-      if (savedDelivery && savedDelivery._id) {
-        setDeliveries((prev) => [savedDelivery, ...prev]);
+      if (saved?._id) {
+        setDeliveries((prev) => [saved, ...prev]);
       } else {
-        const refresh = await axios.get("http://localhost:3000/api/deliveries");
-        setDeliveries(refresh.data);
+        const refresh = await authFetch("/api/deliveries");
+        setDeliveries(await refresh.json());
       }
 
       setShowForm(false);
@@ -145,16 +137,15 @@ function DeliveryEntry() {
     }
   };
 
+  // 🔥 DELETE
   const handleDelete = async (id) => {
     const password = window.prompt("Enter admin password:");
     if (!password) return;
 
     try {
-      await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        data: { password },
+      await authFetch(`/api/deliveries/${id}`, {
+        method: "DELETE",
+        body: JSON.stringify({ password }),
       });
 
       setDeliveries((prev) => prev.filter((d) => d._id !== id));
@@ -166,6 +157,7 @@ function DeliveryEntry() {
 
   return (
     <div className="delivery-container">
+
       <div className="delivery-header">
         <span className="back-icon" onClick={() => setShowForm(false)}>
           ←
@@ -206,10 +198,9 @@ function DeliveryEntry() {
         </>
       )}
 
+      {/* FORM (UNCHANGED UI) */}
       {showForm && (
         <div className="form-grid">
-
-          {/* Farmer */}
           <div className="form-group">
             <label>Farmer</label>
             <select name="farmer" onChange={handleChange} value={form.farmer}>
@@ -222,13 +213,11 @@ function DeliveryEntry() {
             </select>
           </div>
 
-          {/* Farmer Contact */}
           <div className="form-group">
             <label>Farmer Contact No.</label>
             <input value={form.farmerContact} readOnly />
           </div>
 
-          {/* Bean */}
           <div className="form-group">
             <label>Bean Type</label>
             <select
@@ -245,7 +234,6 @@ function DeliveryEntry() {
             </select>
           </div>
 
-          {/* Volume */}
           <div className="form-group">
             <label>Volume</label>
             <input
@@ -256,19 +244,16 @@ function DeliveryEntry() {
             />
           </div>
 
-          {/* Price */}
           <div className="form-group">
             <label>Price per Unit</label>
             <input value={pricePerUnit} readOnly />
           </div>
 
-          {/* Total */}
           <div className="form-group">
             <label>Total Amount</label>
             <input value={totalAmount} readOnly />
           </div>
 
-          {/* Other fields unchanged */}
           <div className="form-group">
             <label>Courier</label>
             <input name="courier" value={form.courier} onChange={handleChange} />
@@ -299,19 +284,16 @@ function DeliveryEntry() {
             <input name="consigneeContact" value={form.consigneeContact} onChange={handleChange} />
           </div>
 
-          {/* File */}
           <div className="form-group">
             <label>Proof of Delivery</label>
             <input type="file" onChange={(e) => setFile(e.target.files[0])} />
           </div>
 
-          {/* Recorded By */}
           <div className="form-group">
             <label>Recorded By</label>
             <input value={form.recordedBy} readOnly />
           </div>
 
-          {/* Actions */}
           <div className="form-actions">
             <button className="save-btn" onClick={handleSubmit}>
               Save
@@ -327,7 +309,6 @@ function DeliveryEntry() {
               Cancel
             </button>
           </div>
-
         </div>
       )}
     </div>

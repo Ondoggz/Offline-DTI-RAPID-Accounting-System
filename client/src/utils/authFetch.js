@@ -1,17 +1,18 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
-export async function authFetch(url, options = {}) {
+export async function authFetch(endpoint, options = {}) {
   const token = localStorage.getItem("token");
 
-  const res = await fetch(`${API_URL}${url}`, {
+  const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers: {
       ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
+      Authorization: token ? `Bearer ${token}` : "",
       "Content-Type": "application/json",
     },
   });
 
+  // Auto logout on unauthorized
   if (res.status === 401) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -22,7 +23,10 @@ export async function authFetch(url, options = {}) {
   return res;
 }
 
-// for beans module
+/* -------------------------
+   BEANS MODULE
+--------------------------*/
+
 export const getBeans = async () => {
   const res = await authFetch("/api/beans");
   return res.json();
