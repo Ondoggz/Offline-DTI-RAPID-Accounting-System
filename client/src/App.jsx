@@ -7,6 +7,7 @@ import DeliveryEntry from "./pages/DeliveryEntry";
 import FormsGeneration from "./pages/formsGeneration";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
+import ReportModule from './pages/ReportModule';
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
@@ -124,6 +125,7 @@ function App() {
     "beans",
     "delivery",
     "forms",
+    "reports",
     1,
     2,
     3,
@@ -152,6 +154,11 @@ function App() {
       return <FormsGeneration />;
     }
 
+    if (selectedModule === "reports") {
+    return <ReportModule />;
+    }
+
+
     if (typeof selectedModule === "number") {
       return <h2>{`Module ${selectedModule}`}</h2>;
     }
@@ -178,6 +185,8 @@ function App() {
                   ? "Delivery Entry"
                   : item === "forms"
                   ? "Forms Generation"
+                  :item == "reports"
+                  ? "Generate Reports"
                   : `Module ${item}`}
               </p>
             </div>
