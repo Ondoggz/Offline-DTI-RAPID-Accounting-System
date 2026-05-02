@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import Login from "./pages/Login";
+import Login from "./pages/login";
+import AdminPage from "./pages/AdminPage";
+import FarmerManagement from "./pages/farmerManagement";
+import BeanManagement from "./pages/beanManagement";
+import DeliveryEntry from "./pages/DeliveryEntry";
+import FormsGeneration from "./pages/formsGeneration";
+import TransactionHistory from "./pages/transactionHistory";
+import ReportModule from "./pages/ReportModule";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 function App() {
   const [message, setMessage] = useState("Loading...");
   const [dbTime, setDbTime] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [selectedModule, setSelectedModule] = useState(null);
+
+  const [beans, setBeans] = useState([
+    { id: 1, name: "Arabica", pricePerUnit: 180, unit: "kg", farmers: [] },
+    { id: 2, name: "Robusta", pricePerUnit: 150, unit: "kg", farmers: [] },
+    { id: 3, name: "Excelsa", pricePerUnit: 170, unit: "kg", farmers: [] },
+  ]);
 
   const timeoutRef = useRef(null);
 
@@ -19,21 +33,17 @@ function App() {
     localStorage.removeItem("lastActivity");
     setIsLoggedIn(false);
     setCurrentUser(null);
+    setSelectedModule(null);
   };
 
   const resetInactivityTimer = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!localStorage.getItem("token")) return;
 
     localStorage.setItem("lastActivity", Date.now().toString());
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    timeoutRef.current = setTimeout(() => {
-      clearSession();
-    }, SESSION_TIMEOUT);
+    timeoutRef.current = setTimeout(clearSession, SESSION_TIMEOUT);
   };
 
   useEffect(() => {
@@ -49,7 +59,9 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
+            const res = await authFetch(
+              `${import.meta.env.VITE_API_URL}/auth/me`
+            );
 
             if (!res.ok) {
               clearSession();
@@ -58,13 +70,11 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remainingTime = SESSION_TIMEOUT - (now - Number(lastActivity));
-
-              timeoutRef.current = setTimeout(() => {
-                clearSession();
-              }, remainingTime);
+              const remaining =
+                SESSION_TIMEOUT - (now - Number(lastActivity));
+              timeoutRef.current = setTimeout(clearSession, remaining);
             }
-          } catch (error) {
+          } catch {
             clearSession();
           }
         }
@@ -82,7 +92,7 @@ function App() {
 
     initializeApp();
 
-    const activityEvents = ["mousemove", "keydown", "click", "scroll"];
+    const events = ["mousemove", "keydown", "click", "scroll"];
 
     const handleActivity = () => {
       if (localStorage.getItem("token")) {
@@ -90,18 +100,11 @@ function App() {
       }
     };
 
-    activityEvents.forEach((event) => {
-      window.addEventListener(event, handleActivity);
-    });
+    events.forEach((e) => window.addEventListener(e, handleActivity));
 
     return () => {
-      activityEvents.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
@@ -112,17 +115,93 @@ function App() {
     resetInactivityTimer();
   };
 
-  const handleLogout = () => {
-    clearSession();
-  };
+  const handleLogout = () => clearSession();
 
   if (!isLoggedIn) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-const isAdmin = currentUser?.role === "admin";
-// OR if using boolean:
-// const isAdmin = currentUser?.isAdmin === true;
+  const isAdmin = currentUser?.role === "admin";
+
+  const modules = [
+    ...(isAdmin ? ["admin"] : []),
+    "farmers",
+    "beans",
+    "delivery",
+    "forms",
+    "reports",
+    "transactions",
+  ];
+
+  const renderMainContent = () => {
+    if (selectedModule === "farmers") {
+      return <FarmerManagement beans={beans} />;
+    }
+
+    if (selectedModule === "beans") {
+      return <BeanManagement beans={beans} setBeans={setBeans} />;
+    }
+
+    if (selectedModule === "admin") {
+      return <AdminPage />;
+    }
+
+    if (selectedModule === "delivery") {
+      return <DeliveryEntry />;
+    }
+
+    if (selectedModule === "forms") {
+      return <FormsGeneration />;
+    }
+
+    if (selectedModule === "reports") {
+      return <ReportModule />;
+    }
+
+    if (selectedModule === "transactions") {
+      return <TransactionHistory />;
+    }
+
+    return (
+      <>
+        <div className="modules">
+          {modules.map((item) => (
+            <div
+              key={item}
+              className="module-card"
+              onClick={() => setSelectedModule(item)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="icon">📄</div>
+              <p>
+                {item === "admin"
+                  ? "Admin"
+                  : item === "farmers"
+                  ? "Farmer Management"
+                  : item === "beans"
+                  ? "Bean Management"
+                  : item === "delivery"
+                  ? "Delivery Entry"
+                  : item === "forms"
+                  ? "Forms Generation"
+                  : item === "reports"
+                  ? "Generate Reports"
+                  : item === "transactions"
+                  ? "Transaction History"
+                  : item}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="status">
+          <p>{message}</p>
+          {dbTime && <p>Database time: {dbTime}</p>}
+          <p>Logged in as: {currentUser?.username}</p>
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="app-layout">
@@ -132,50 +211,51 @@ const isAdmin = currentUser?.role === "admin";
           <h1 className="title">Dashboard</h1>
         </div>
 
-    <div className="modules">
-      {[
-        ...(isAdmin ? ["admin"] : []),
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ].map((item) => (
-        <div key={item} className="module-card">
-          <div className="icon">📄</div>
-          <p>
-            {item === "admin" ? "Admin" : `Module ${item}`}
-          </p>
-        </div>
-      ))}
-    </div>
+        {selectedModule && (
+          <button onClick={() => setSelectedModule(null)}>
+            Back to Dashboard
+          </button>
+        )}
 
-        <div className="status">
-          <p>{message}</p>
-          {dbTime && <p>Database time: {dbTime}</p>}
-          {currentUser && <p>Logged in as: {currentUser.username}</p>}
-        </div>
+        {renderMainContent()}
       </div>
 
+      {/* ✅ UPDATED SIDEBAR */}
       <div className="sidebar">
-        <input className="search" placeholder="Search..." />
+        <div className="profile-card">
+          <div className="avatar">👤</div>
 
-        <div className="section">
-          <h4>Section Heading</h4>
-          <ul>
-            <li>Title</li>
-            <li>Title</li>
-            <li>Title</li>
-          </ul>
-        </div>
+          <h3>{currentUser?.name || currentUser?.username}</h3>
 
-        <div className="section">
-          <h4>Section Heading</h4>
-          <ul>
-            <li>Title</li>
-            <li>Title</li>
-          </ul>
+          <p className="role">
+            {currentUser?.role === "admin" ? "Admin" : "User"}
+          </p>
+
+          <p className="meta">
+            <strong>Username:</strong>
+            <br />
+            {currentUser?.username || "N/A"}
+          </p>
+
+          <p className="meta">
+            <strong>Position:</strong>
+            <br />
+            {currentUser?.position || "N/A"}
+          </p>
+
+          <p className="meta">
+            <strong>Sex:</strong> {currentUser?.sex || "N/A"}
+            <br />
+            <strong>Age:</strong> {currentUser?.age || "N/A"}
+          </p>
+
+          <p className="meta">
+            <strong>Account Created:</strong>
+            <br />
+            {currentUser?.createdAt
+              ? new Date(currentUser.createdAt).toLocaleString()
+              : "N/A"}
+          </p>
         </div>
 
         <button className="logout" onClick={handleLogout}>

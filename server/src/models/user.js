@@ -11,15 +11,31 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
-    // ✅ ADD THIS
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user",
     },
+    name: {
+      type: String,
+      default: "",
+    },
+    sex: {
+      type: String,
+      default: "",
+    },
+    age: {
+      type: Number,
+      default: null,
+    },
+    position: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
+
+export default User;
