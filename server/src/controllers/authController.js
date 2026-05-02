@@ -45,6 +45,11 @@ export const loginUser = async (req, res) => {
         id: user._id,
         username: user.username,
         role: user.role,
+        name: user.name,
+        sex: user.sex,
+        age: user.age,
+        position: user.position,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
@@ -57,11 +62,24 @@ export const loginUser = async (req, res) => {
 
 export const getCurrentUser = async (req, res) => {
   try {
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
     return res.status(200).json({
       user: {
-        id: req.user.id,
-        username: req.user.username,
-        role: req.user.role,
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        name: user.name,
+        sex: user.sex,
+        age: user.age,
+        position: user.position,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
