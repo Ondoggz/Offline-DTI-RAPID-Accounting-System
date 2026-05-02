@@ -10,6 +10,7 @@ import beanRoutes from "./src/routes/beanRoutes.js";
 import farmerRoutes from "./src/routes/farmerRoutes.js";
 import deliveryRoutes from "./src/routes/deliveryRoutes.js";
 import formsRoutes from "./src/routes/formsRoutes.js";
+import reportRoutes from "./src/routes/reportRoutes.js";
 import transactionRoutes from "./src/routes/transactionRoutes.js";
 import paymentRoutes from "./src/routes/paymentRoutes.js";
 
@@ -44,6 +45,7 @@ app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/forms", formsRoutes);
+app.use("/api/reports", reportRoutes);
 
 /* Static files */
 app.use("/uploads", express.static("uploads"));

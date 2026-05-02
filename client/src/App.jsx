@@ -6,6 +6,7 @@ import BeanManagement from "./pages/beanManagement";
 import DeliveryEntry from "./pages/DeliveryEntry";
 import FormsGeneration from "./pages/formsGeneration";
 import TransactionHistory from "./pages/transactionHistory";
+import ReportModule from "./pages/ReportModule";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
 
@@ -122,13 +123,15 @@ function App() {
 
   const isAdmin = currentUser?.role === "admin";
 
+  // ✅ FIXED MODULES
   const modules = [
     ...(isAdmin ? ["admin"] : []),
     "farmers",
     "beans",
     "delivery",
     "forms",
-    "transactions"
+    "reports",
+    "transactions",
   ];
 
   const renderMainContent = () => {
@@ -152,12 +155,13 @@ function App() {
       return <FormsGeneration />;
     }
 
-    if (selectedModule === "transactions") {
-      return <TransactionHistory />;
+    // ✅ BOTH FEATURES KEPT
+    if (selectedModule === "reports") {
+      return <ReportModule />;
     }
 
-    if (typeof selectedModule === "number") {
-      return <h2>{`Module ${selectedModule}`}</h2>;
+    if (selectedModule === "transactions") {
+      return <TransactionHistory />;
     }
 
     return (
@@ -182,9 +186,11 @@ function App() {
                   ? "Delivery Entry"
                   : item === "forms"
                   ? "Forms Generation"
+                  : item === "reports"
+                  ? "Generate Reports"
                   : item === "transactions"
                   ? "Transaction History"
-                  : `Module ${item}`}
+                  : item}
               </p>
             </div>
           ))}
