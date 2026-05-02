@@ -2,28 +2,28 @@ import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
   {
-    type: {
-      type: String,
-      enum: ["DELIVERY", "PAYMENT"],
-      required: true,
-    },
-
     farmerName: {
       type: String,
       required: true,
+      trim: true,
     },
 
     beanType: {
       type: String,
+      required: true,
+      trim: true,
+    },
+
+    volume: {
+      type: Number,
+      required: true,
+      min: 0,
     },
 
     amount: {
       type: Number,
       required: true,
-    },
-
-    volume: {
-      type: Number,
+      min: 0,
     },
 
     date: {
@@ -33,6 +33,7 @@ const transactionSchema = new mongoose.Schema(
 
     remarks: {
       type: String,
+      default: "",
     },
 
     createdBy: {

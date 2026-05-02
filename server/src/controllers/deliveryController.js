@@ -4,6 +4,10 @@ import Transaction from "../models/transaction.js";
 // CREATE
 export const createDelivery = async (req, res) => {
   try {
+    const volume = Number(req.body.volume) || 0;
+    const pricePerUnit = Number(req.body.pricePerUnit) || 0;
+    const totalAmount = volume * pricePerUnit;
+
     const newDelivery = await Delivery.create({
       farmer: req.body.farmer,
       farmerContact: req.body.farmerContact,
@@ -16,17 +20,21 @@ export const createDelivery = async (req, res) => {
       consigneeContact: req.body.consigneeContact,
       recordedBy: req.body.recordedBy,
       proofOfDelivery: req.file ? req.file.filename : "",
+
+      volume,
+      pricePerUnit,
+      totalAmount,
     });
 
     await Transaction.create({
       type: "DELIVERY",
       farmerName: newDelivery.farmer,
       beanType: newDelivery.beanType,
-      amount: 0, // ⚠️ You don’t have pricing/volume yet
-      volume: 0,
+      amount: totalAmount,
+      volume,
       date: newDelivery.date,
       remarks: "Delivery recorded",
-      createdBy: req.user?.id, // from JWT
+      createdBy: req.user?.id,
     });
 
     res.status(201).json(newDelivery);
