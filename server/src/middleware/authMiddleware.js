@@ -13,12 +13,20 @@ export const protect = async (req, res, next) => {
     }
 
     if (!token) {
-      return res.status(401).json({ message: "Not authorized" });
+      return res.status(401).json({ message: "Not authorized, no token" });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        message: "JWT_SECRET not configured",
+      });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select("-password");
+    const userId = decoded.id || decoded.userId;
+
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(401).json({ message: "User not found" });
@@ -28,10 +36,16 @@ export const protect = async (req, res, next) => {
       id: user._id,
       username: user.username,
       role: user.role,
+      createdAt: user.createdAt,
     };
 
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Not authorized" });
+    console.error("AUTH ERROR:", error);
+
+    return res.status(500).json({
+      message: "Authentication failed",
+      error: error.message,
+    });
   }
 };

@@ -1,8 +1,13 @@
 import Delivery from "../models/delivery.js";
+import Transaction from "../models/transaction.js";
 
 // CREATE
 export const createDelivery = async (req, res) => {
   try {
+    const volume = Number(req.body.volume) || 0;
+    const pricePerUnit = Number(req.body.pricePerUnit) || 0;
+    const totalAmount = volume * pricePerUnit;
+
     const newDelivery = await Delivery.create({
       farmer: req.body.farmer,
       farmerContact: req.body.farmerContact,
@@ -14,12 +19,26 @@ export const createDelivery = async (req, res) => {
       deliveryGuyContact: req.body.deliveryGuyContact,
       consigneeContact: req.body.consigneeContact,
       recordedBy: req.body.recordedBy,
-
-      // 📸 file path from multer
       proofOfDelivery: req.file ? req.file.filename : "",
+
+      volume,
+      pricePerUnit,
+      totalAmount,
+    });
+
+    await Transaction.create({
+      type: "DELIVERY",
+      farmerName: newDelivery.farmer,
+      beanType: newDelivery.beanType,
+      amount: totalAmount,
+      volume,
+      date: newDelivery.date,
+      remarks: "Delivery recorded",
+      createdBy: req.user?.id,
     });
 
     res.status(201).json(newDelivery);
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

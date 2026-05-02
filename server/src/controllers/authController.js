@@ -45,6 +45,7 @@ export const loginUser = async (req, res) => {
         id: user._id,
         username: user.username,
         role: user.role,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
@@ -59,9 +60,10 @@ export const getCurrentUser = async (req, res) => {
   try {
     return res.status(200).json({
       user: {
-        id: req.user.id,
-        username: req.user.username,
-        role: req.user.role,
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {

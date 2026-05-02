@@ -5,9 +5,10 @@ import FarmerManagement from "./pages/farmerManagement";
 import BeanManagement from "./pages/beanManagement";
 import DeliveryEntry from "./pages/DeliveryEntry";
 import FormsGeneration from "./pages/formsGeneration";
+import TransactionHistory from "./pages/transactionHistory";
+import ReportModule from "./pages/ReportModule";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
-import ReportModule from './pages/ReportModule';
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
@@ -58,7 +59,9 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
+            const res = await authFetch(
+              `${import.meta.env.VITE_API_URL}/auth/me`
+            );
 
             if (!res.ok) {
               clearSession();
@@ -67,7 +70,8 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remaining = SESSION_TIMEOUT - (now - Number(lastActivity));
+              const remaining =
+                SESSION_TIMEOUT - (now - Number(lastActivity));
               timeoutRef.current = setTimeout(clearSession, remaining);
             }
           } catch {
@@ -119,6 +123,7 @@ function App() {
 
   const isAdmin = currentUser?.role === "admin";
 
+  // ✅ FIXED MODULES
   const modules = [
     ...(isAdmin ? ["admin"] : []),
     "farmers",
@@ -126,11 +131,7 @@ function App() {
     "delivery",
     "forms",
     "reports",
-    1,
-    2,
-    3,
-    4,
-    5,
+    "transactions",
   ];
 
   const renderMainContent = () => {
@@ -154,13 +155,13 @@ function App() {
       return <FormsGeneration />;
     }
 
+    // ✅ BOTH FEATURES KEPT
     if (selectedModule === "reports") {
-    return <ReportModule />;
+      return <ReportModule />;
     }
 
-
-    if (typeof selectedModule === "number") {
-      return <h2>{`Module ${selectedModule}`}</h2>;
+    if (selectedModule === "transactions") {
+      return <TransactionHistory />;
     }
 
     return (
@@ -185,9 +186,11 @@ function App() {
                   ? "Delivery Entry"
                   : item === "forms"
                   ? "Forms Generation"
-                  :item == "reports"
+                  : item === "reports"
                   ? "Generate Reports"
-                  : `Module ${item}`}
+                  : item === "transactions"
+                  ? "Transaction History"
+                  : item}
               </p>
             </div>
           ))}
@@ -196,7 +199,7 @@ function App() {
         <div className="status">
           <p>{message}</p>
           {dbTime && <p>Database time: {dbTime}</p>}
-          <p>Logged in as: {currentUser.username}</p>
+          <p>Logged in as: {currentUser?.username}</p>
         </div>
       </>
     );
@@ -220,7 +223,23 @@ function App() {
       </div>
 
       <div className="sidebar">
-        <input className="search" placeholder="Search..." />
+        <div className="profile-card">
+          <div className="avatar">👤</div>
+
+          <h3>{currentUser?.username}</h3>
+
+          <p className="role">
+            {currentUser?.role === "admin" ? "Admin" : "User"}
+          </p>
+
+          <p className="meta">
+            Account Created:
+            <br />
+            {currentUser?.createdAt
+              ? new Date(currentUser.createdAt).toLocaleString()
+              : "N/A"}
+          </p>
+        </div>
 
         <button className="logout" onClick={handleLogout}>
           Logout

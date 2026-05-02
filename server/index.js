@@ -10,27 +10,25 @@ import beanRoutes from "./src/routes/beanRoutes.js";
 import farmerRoutes from "./src/routes/farmerRoutes.js";
 import deliveryRoutes from "./src/routes/deliveryRoutes.js";
 import formsRoutes from "./src/routes/formsRoutes.js";
-import reportRoutes from './src/routes/reportRoutes.js';
+import reportRoutes from "./src/routes/reportRoutes.js";
+import transactionRoutes from "./src/routes/transactionRoutes.js";
+import paymentRoutes from "./src/routes/paymentRoutes.js";
 
 import { protect } from "./src/middleware/authMiddleware.js";
 
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads");
-}
-
-if (!fs.existsSync("temp")) {
-  fs.mkdirSync("temp");
-}
-
-if (!fs.existsSync("templates")) {
-  fs.mkdirSync("templates");
-}
+["uploads", "temp", "templates"].forEach((folder) => {
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder);
+  }
+});
 
 const app = express();
 
+/* Middleware FIRST */
 app.use(cors());
 app.use(express.json());
 
+/* Test route */
 app.get("/api", (req, res) => {
   res.json({
     message: "Backend connected successfully",
@@ -38,14 +36,19 @@ app.get("/api", (req, res) => {
   });
 });
 
+/* Routes */
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/api/beans", beanRoutes);
 app.use("/api/farmers", farmerRoutes);
 app.use("/api/deliveries", deliveryRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/forms", formsRoutes);
+app.use("/api/reports", reportRoutes);
+
+/* Static files */
 app.use("/uploads", express.static("uploads"));
-app.use('/api/reports', reportRoutes);
 
 app.get("/protected", protect, (req, res) => {
   res.json({
@@ -54,6 +57,7 @@ app.get("/protected", protect, (req, res) => {
   });
 });
 
+/* 404 */
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });

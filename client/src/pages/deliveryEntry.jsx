@@ -22,9 +22,9 @@ function DeliveryEntry() {
     deliveryGuyContact: "",
     consigneeContact: "",
     recordedBy: "",
+    volume: "",
   });
 
-  // 📥 LOAD DATA
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -42,18 +42,22 @@ function DeliveryEntry() {
         setFarmers(fRes.data);
         setBeans(bRes.data);
       } catch (err) {
-        console.error(err);
+        console.error("FETCH ERROR:", err);
       }
     };
 
     fetchData();
-  }, []);
+  }, [token]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // 📤 SUBMIT DELIVERY
+  const selectedBean = beans.find((b) => b.beanName === form.beanType);
+
+  const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
+  const totalAmount = Number(form.volume || 0) * pricePerUnit;
+
   const handleSubmit = async () => {
     try {
       const data = new FormData();
@@ -62,11 +66,14 @@ function DeliveryEntry() {
         data.append(key, form[key]);
       });
 
+      data.append("pricePerUnit", pricePerUnit);
+      data.append("totalAmount", totalAmount);
+
       if (file) {
         data.append("proofOfDelivery", file);
       }
 
-      await axios.post(
+      const res = await axios.post(
         "http://localhost:3000/api/deliveries",
         data,
         {
@@ -77,8 +84,14 @@ function DeliveryEntry() {
         }
       );
 
-      const res = await axios.get("http://localhost:3000/api/deliveries");
-      setDeliveries(res.data);
+      const savedDelivery = res.data.data || res.data;
+
+      if (savedDelivery && savedDelivery._id) {
+        setDeliveries((prev) => [savedDelivery, ...prev]);
+      } else {
+        const refresh = await axios.get("http://localhost:3000/api/deliveries");
+        setDeliveries(refresh.data);
+      }
 
       setShowForm(false);
 
@@ -93,49 +106,44 @@ function DeliveryEntry() {
         deliveryGuyContact: "",
         consigneeContact: "",
         recordedBy: "",
+        volume: "",
       });
 
       setFile(null);
     } catch (err) {
-      console.error(err);
+      console.error("SUBMIT ERROR:", err);
+      alert("Failed to save delivery.");
     }
   };
 
- // 🗑 DELETE DELIVERY
-const handleDelete = async (id) => {
-  const password = window.prompt("Enter admin password:");
+  const handleDelete = async (id) => {
+    const password = window.prompt("Enter admin password:");
+    if (!password) return;
 
-  if (!password) return;
+    try {
+      await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        data: { password },
+      });
 
-  try {
-    await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      data: {
-        password, // 🔥 required for backend check
-      },
-    });
-
-    const res = await axios.get("http://localhost:3000/api/deliveries");
-    setDeliveries(res.data);
-
-  } catch (err) {
-    console.error(err);
-    alert("Delete failed (wrong password or error)");
-  }
-};
+      setDeliveries((prev) => prev.filter((d) => d._id !== id));
+    } catch (err) {
+      console.error("DELETE ERROR:", err);
+      alert("Delete failed. Wrong password or server error.");
+    }
+  };
 
   return (
     <div className="delivery-container">
-
-      {/* HEADER */}
       <div className="delivery-header">
-        <span className="back-icon" onClick={() => setShowForm(false)}>←</span>
+        <span className="back-icon" onClick={() => setShowForm(false)}>
+          ←
+        </span>
         <h2>Delivery Entry</h2>
       </div>
 
-      {/* LIST VIEW */}
       {!showForm && (
         <>
           <div className="delivery-actions">
@@ -148,7 +156,9 @@ const handleDelete = async (id) => {
             {deliveries.map((d) => (
               <div key={d._id} className="delivery-item">
                 <span>
-                  {d.farmer} • {d.beanType} • {d.date?.slice(0, 10)}
+                  {d.farmer} • {d.beanType} • {d.date?.slice(0, 10)} • Volume:{" "}
+                  {d.volume ?? 0} • Price: {d.pricePerUnit ?? 0} • Total:{" "}
+                  {d.totalAmount ?? 0}
                 </span>
 
                 <button
@@ -167,10 +177,8 @@ const handleDelete = async (id) => {
         </>
       )}
 
-      {/* FORM VIEW */}
       {showForm && (
         <div className="form-grid">
-
           <div className="form-group">
             <label>Farmer</label>
             <select name="farmer" onChange={handleChange} value={form.farmer}>
@@ -194,7 +202,11 @@ const handleDelete = async (id) => {
 
           <div className="form-group">
             <label>Bean Type</label>
-            <select name="beanType" onChange={handleChange} value={form.beanType}>
+            <select
+              name="beanType"
+              onChange={handleChange}
+              value={form.beanType}
+            >
               <option value="">Select bean</option>
               {beans.map((b) => (
                 <option key={b._id} value={b.beanName}>
@@ -205,13 +217,42 @@ const handleDelete = async (id) => {
           </div>
 
           <div className="form-group">
+            <label>Volume</label>
+            <input
+              type="number"
+              name="volume"
+              value={form.volume}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Price per Unit</label>
+            <input value={pricePerUnit} readOnly />
+          </div>
+
+          <div className="form-group">
+            <label>Total Amount</label>
+            <input value={totalAmount} readOnly />
+          </div>
+
+          <div className="form-group">
             <label>Courier</label>
-            <input name="courier" value={form.courier} onChange={handleChange} />
+            <input
+              name="courier"
+              value={form.courier}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Date</label>
-            <input type="date" name="date" value={form.date} onChange={handleChange} />
+            <input
+              type="date"
+              name="date"
+              value={form.date}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
@@ -252,10 +293,7 @@ const handleDelete = async (id) => {
 
           <div className="form-group">
             <label>Proof of Delivery</label>
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files[0])}
-            />
+            <input type="file" onChange={(e) => setFile(e.target.files[0])} />
           </div>
 
           <div className="form-group">

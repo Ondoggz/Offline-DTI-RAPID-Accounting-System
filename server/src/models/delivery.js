@@ -9,7 +9,6 @@ const deliverySchema = new mongoose.Schema(
 
     farmerContact: {
       type: String,
-      required: false,
     },
 
     beanType: {
@@ -19,7 +18,6 @@ const deliverySchema = new mongoose.Schema(
 
     courier: {
       type: String,
-      required: false,
     },
 
     date: {
@@ -29,25 +27,20 @@ const deliverySchema = new mongoose.Schema(
 
     deliveryGuy: {
       type: String,
-      required: false,
     },
 
     consignee: {
       type: String,
-      required: false,
     },
 
     deliveryGuyContact: {
       type: String,
-      required: false,
     },
 
     consigneeContact: {
       type: String,
-      required: false,
     },
 
-    // 📸 stored filename from multer
     proofOfDelivery: {
       type: String,
       default: "",
@@ -55,9 +48,27 @@ const deliverySchema = new mongoose.Schema(
 
     recordedBy: {
       type: String,
-      required: false,
+    },
+
+    volume: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    pricePerUnit: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
+  
   { timestamps: true }
 );
 
