@@ -1,20 +1,40 @@
 // server/src/routes/reportRoutes.js
-import express from 'express';
-import { 
-  generateMonthlyReport, 
+import express from "express";
+import {
+  generateMonthlyReport,
   generateMultiMonthReport,
-  getReportSummary
-} from '../controllers/reportController.js';
-import { authMiddleware } from '../middleware/authMiddleware.js';
+  getReportSummary,
+} from "../controllers/reportController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// All report routes require authentication
-router.use(authMiddleware);
+/* -------------------------
+   PROTECTED ROUTES
+-------------------------- */
+router.use(protect);
 
-// Generate reports
-router.post('/monthly', generateMonthlyReport);
-router.post('/multi-month', generateMultiMonthReport);
-router.get('/summary', getReportSummary);
+/* -------------------------
+   REPORT ROUTES
+-------------------------- */
+
+// Generate monthly report
+router.post("/monthly", generateMonthlyReport);
+
+// Generate multi-month report
+router.post("/multi-month", generateMultiMonthReport);
+
+// Get summary (quick stats)
+router.get("/summary", getReportSummary);
+
+/* -------------------------
+   DEBUG (optional)
+-------------------------- */
+router.get("/test", (req, res) => {
+  res.json({
+    message: "Report routes working",
+    user: req.user,
+  });
+});
 
 export default router;

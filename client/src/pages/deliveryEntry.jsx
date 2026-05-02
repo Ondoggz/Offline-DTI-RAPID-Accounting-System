@@ -10,6 +10,14 @@ function DeliveryEntry() {
   const [file, setFile] = useState(null);
 
   const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const getRecordedBy = () => {
+    if (user?.name && user?.position) {
+      return `${user.name} (${user.position})`;
+    }
+    return user?.name || user?.username || "";
+  };
 
   const [form, setForm] = useState({
     farmer: "",
@@ -21,7 +29,7 @@ function DeliveryEntry() {
     consignee: "",
     deliveryGuyContact: "",
     consigneeContact: "",
-    recordedBy: "",
+    recordedBy: getRecordedBy(), // ✅ FULL NAME
     volume: "",
   });
 
@@ -50,13 +58,49 @@ function DeliveryEntry() {
   }, [token]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === "farmer") {
+      const selectedFarmer = farmers.find((f) => f.name === value);
+
+      setForm({
+        ...form,
+        farmer: value,
+        farmerContact:
+          selectedFarmer?.contactNumber ||
+          selectedFarmer?.farmerContact ||
+          selectedFarmer?.contact ||
+          "",
+      });
+
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
   };
 
   const selectedBean = beans.find((b) => b.beanName === form.beanType);
 
   const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
   const totalAmount = Number(form.volume || 0) * pricePerUnit;
+
+  const resetForm = () => {
+    setForm({
+      farmer: "",
+      farmerContact: "",
+      beanType: "",
+      courier: "",
+      date: "",
+      deliveryGuy: "",
+      consignee: "",
+      deliveryGuyContact: "",
+      consigneeContact: "",
+      recordedBy: getRecordedBy(), // ✅ FULL NAME RESET
+      volume: "",
+    });
+
+    setFile(null);
+  };
 
   const handleSubmit = async () => {
     try {
@@ -94,22 +138,7 @@ function DeliveryEntry() {
       }
 
       setShowForm(false);
-
-      setForm({
-        farmer: "",
-        farmerContact: "",
-        beanType: "",
-        courier: "",
-        date: "",
-        deliveryGuy: "",
-        consignee: "",
-        deliveryGuyContact: "",
-        consigneeContact: "",
-        recordedBy: "",
-        volume: "",
-      });
-
-      setFile(null);
+      resetForm();
     } catch (err) {
       console.error("SUBMIT ERROR:", err);
       alert("Failed to save delivery.");
@@ -131,7 +160,7 @@ function DeliveryEntry() {
       setDeliveries((prev) => prev.filter((d) => d._id !== id));
     } catch (err) {
       console.error("DELETE ERROR:", err);
-      alert("Delete failed. Wrong password or server error.");
+      alert("Delete failed.");
     }
   };
 
@@ -179,6 +208,8 @@ function DeliveryEntry() {
 
       {showForm && (
         <div className="form-grid">
+
+          {/* Farmer */}
           <div className="form-group">
             <label>Farmer</label>
             <select name="farmer" onChange={handleChange} value={form.farmer}>
@@ -191,15 +222,13 @@ function DeliveryEntry() {
             </select>
           </div>
 
+          {/* Farmer Contact */}
           <div className="form-group">
             <label>Farmer Contact No.</label>
-            <input
-              name="farmerContact"
-              value={form.farmerContact}
-              onChange={handleChange}
-            />
+            <input value={form.farmerContact} readOnly />
           </div>
 
+          {/* Bean */}
           <div className="form-group">
             <label>Bean Type</label>
             <select
@@ -216,6 +245,7 @@ function DeliveryEntry() {
             </select>
           </div>
 
+          {/* Volume */}
           <div className="form-group">
             <label>Volume</label>
             <input
@@ -226,94 +256,78 @@ function DeliveryEntry() {
             />
           </div>
 
+          {/* Price */}
           <div className="form-group">
             <label>Price per Unit</label>
             <input value={pricePerUnit} readOnly />
           </div>
 
+          {/* Total */}
           <div className="form-group">
             <label>Total Amount</label>
             <input value={totalAmount} readOnly />
           </div>
 
+          {/* Other fields unchanged */}
           <div className="form-group">
             <label>Courier</label>
-            <input
-              name="courier"
-              value={form.courier}
-              onChange={handleChange}
-            />
+            <input name="courier" value={form.courier} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Date</label>
-            <input
-              type="date"
-              name="date"
-              value={form.date}
-              onChange={handleChange}
-            />
+            <input type="date" name="date" value={form.date} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy</label>
-            <input
-              name="deliveryGuy"
-              value={form.deliveryGuy}
-              onChange={handleChange}
-            />
+            <input name="deliveryGuy" value={form.deliveryGuy} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy Contact No.</label>
-            <input
-              name="deliveryGuyContact"
-              value={form.deliveryGuyContact}
-              onChange={handleChange}
-            />
+            <input name="deliveryGuyContact" value={form.deliveryGuyContact} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Consignee</label>
-            <input
-              name="consignee"
-              value={form.consignee}
-              onChange={handleChange}
-            />
+            <input name="consignee" value={form.consignee} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Consignee Contact No.</label>
-            <input
-              name="consigneeContact"
-              value={form.consigneeContact}
-              onChange={handleChange}
-            />
+            <input name="consigneeContact" value={form.consigneeContact} onChange={handleChange} />
           </div>
 
+          {/* File */}
           <div className="form-group">
             <label>Proof of Delivery</label>
             <input type="file" onChange={(e) => setFile(e.target.files[0])} />
           </div>
 
+          {/* Recorded By */}
           <div className="form-group">
             <label>Recorded By</label>
-            <input
-              name="recordedBy"
-              value={form.recordedBy}
-              onChange={handleChange}
-            />
+            <input value={form.recordedBy} readOnly />
           </div>
 
+          {/* Actions */}
           <div className="form-actions">
             <button className="save-btn" onClick={handleSubmit}>
               Save
             </button>
 
-            <button className="cancel-btn" onClick={() => setShowForm(false)}>
+            <button
+              className="cancel-btn"
+              onClick={() => {
+                setShowForm(false);
+                resetForm();
+              }}
+            >
               Cancel
             </button>
           </div>
+
         </div>
       )}
     </div>

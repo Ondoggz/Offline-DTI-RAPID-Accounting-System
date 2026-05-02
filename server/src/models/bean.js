@@ -19,4 +19,4 @@ const beanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Bean", beanSchema);
+export default mongoose.models.Bean || mongoose.model("Bean", beanSchema);

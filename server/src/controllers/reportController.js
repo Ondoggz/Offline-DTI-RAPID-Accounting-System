@@ -1,8 +1,6 @@
 // server/src/controllers/reportController.js
-import Delivery from '../models/delivery.js';
-import Transaction from '../models/transaction.js';
-import Farmer from '../models/farmer.js';
-import Bean from '../models/bean.js';
+import Delivery from "../models/delivery.js";
+import Farmer from "../models/farmer.js";
 
 // Helper function to get month range
 const getMonthRange = (month, year) => {
@@ -15,86 +13,83 @@ const getMonthRange = (month, year) => {
 export const generateMonthlyReport = async (req, res) => {
   try {
     const { reportType, month, year } = req.body;
-    
+
     if (!month || !year) {
-      return res.status(400).json({ error: 'Month and year are required' });
+      return res.status(400).json({ error: "Month and year are required" });
     }
 
     const { startDate, endDate } = getMonthRange(month, year);
-    let reportData = {};
+    const reportData = {};
 
-    if (reportType === 'per-farmer' || reportType === 'both') {
-      // Get all farmers
+    if (reportType === "per-farmer" || reportType === "both") {
       const farmers = await Farmer.find({});
-      
-      const perFarmerReport = await Promise.all(farmers.map(async (farmer) => {
-        // Get deliveries for this farmer in the month
-        const deliveries = await Delivery.find({
-          farmer: farmer.name,
-          date: { $gte: startDate, $lte: endDate }
-        });
 
-        // Get PAYMENT transactions (sales) for this farmer in the month
-        const transactions = await Transaction.find({
-          farmerName: farmer.name,
-          type: 'PAYMENT',  // Only PAYMENT type represents sales
-          date: { $gte: startDate, $lte: endDate }
-        });
+      const perFarmerReport = await Promise.all(
+        farmers.map(async (farmer) => {
+          const deliveries = await Delivery.find({
+            farmer: farmer.name,
+            date: { $gte: startDate, $lte: endDate },
+          });
 
-        // Since deliveries don't have volume, we need to calculate from transactions
-        // Or you need to add volume field to delivery schema
-        const volumeReceived = 0; // TEMP: Add volume to delivery schema
-        const volumeSold = transactions.reduce((sum, t) => sum + (t.volume || 0), 0);
-        const salesGenerated = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-        const volumeBalance = volumeReceived - volumeSold;
+          const volumeSold = deliveries.reduce(
+            (sum, d) => sum + Number(d.volume || 0),
+            0
+          );
 
-        return {
-          farmerId: farmer.farmerID,
-          farmerName: farmer.name,
-          farmerAddress: farmer.address,
-          contactNumber: farmer.contactNumber,
-          deliveries: deliveries.length,
-          volumeReceived,
-          volumeSold,
-          salesGenerated,
-          volumeBalance,
-          transactions: transactions
-        };
-      }));
+          const salesGenerated = deliveries.reduce(
+            (sum, d) => sum + Number(d.totalAmount || 0),
+            0
+          );
 
-      reportData.perFarmer = perFarmerReport.filter(f => f.transactions.length > 0 || f.deliveries > 0);
+          return {
+            farmerId: farmer.farmerID,
+            farmerName: farmer.name,
+            farmerAddress: farmer.address,
+            contactNumber: farmer.contactNumber,
+            deliveries: deliveries.length,
+            volumeSold,
+            salesGenerated,
+          };
+        })
+      );
+
+      reportData.perFarmer = perFarmerReport.filter((f) => f.deliveries > 0);
     }
 
-    if (reportType === 'organization' || reportType === 'both') {
-      // Organization-wide totals
+    if (reportType === "organization" || reportType === "both") {
       const deliveries = await Delivery.find({
-        date: { $gte: startDate, $lte: endDate }
+        date: { $gte: startDate, $lte: endDate },
       });
 
-      const transactions = await Transaction.find({
-        type: 'PAYMENT',
-        date: { $gte: startDate, $lte: endDate }
-      });
-
-      // Group by bean type
       const beanTypeSummary = {};
-      transactions.forEach(t => {
-        if (t.beanType) {
-          if (!beanTypeSummary[t.beanType]) {
-            beanTypeSummary[t.beanType] = {
-              volumeSold: 0,
-              salesGenerated: 0
-            };
-          }
-          beanTypeSummary[t.beanType].volumeSold += t.volume || 0;
-          beanTypeSummary[t.beanType].salesGenerated += t.amount || 0;
+
+      deliveries.forEach((d) => {
+        const beanType = d.beanType || "Unknown";
+
+        if (!beanTypeSummary[beanType]) {
+          beanTypeSummary[beanType] = {
+            volumeSold: 0,
+            salesGenerated: 0,
+          };
         }
+
+        beanTypeSummary[beanType].volumeSold += Number(d.volume || 0);
+        beanTypeSummary[beanType].salesGenerated += Number(d.totalAmount || 0);
       });
 
       const totalDeliveries = deliveries.length;
-      const totalVolumeSold = transactions.reduce((sum, t) => sum + (t.volume || 0), 0);
-      const totalSalesGenerated = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-      const uniqueFarmers = new Set(transactions.map(t => t.farmerName)).size;
+
+      const totalVolumeSold = deliveries.reduce(
+        (sum, d) => sum + Number(d.volume || 0),
+        0
+      );
+
+      const totalSalesGenerated = deliveries.reduce(
+        (sum, d) => sum + Number(d.totalAmount || 0),
+        0
+      );
+
+      const uniqueFarmers = new Set(deliveries.map((d) => d.farmer)).size;
 
       reportData.organization = {
         totalDeliveries,
@@ -104,66 +99,78 @@ export const generateMonthlyReport = async (req, res) => {
         beanTypeSummary,
         month,
         year,
-        monthName: new Date(year, month - 1).toLocaleString('default', { month: 'long' })
+        monthName: new Date(year, month - 1).toLocaleString("default", {
+          month: "long",
+        }),
       };
     }
 
-    res.json({ success: true, data: reportData, reportType, month, year });
-
+    return res.json({
+      success: true,
+      data: reportData,
+      reportType,
+      month,
+      year,
+    });
   } catch (error) {
-    console.error('Report generation error:', error);
-    res.status(500).json({ error: 'Failed to generate report: ' + error.message });
+    console.error("Report generation error:", error);
+    return res.status(500).json({
+      error: "Failed to generate report: " + error.message,
+    });
   }
 };
 
-// Generate multi-month report (range)
+// Generate multi-month report
 export const generateMultiMonthReport = async (req, res) => {
   try {
     const { reportType, startMonth, startYear, endMonth, endYear } = req.body;
 
-    let startDate = new Date(startYear, startMonth - 1, 1);
-    let endDate = new Date(endYear, endMonth, 0, 23, 59, 59);
+    if (!startMonth || !startYear || !endMonth || !endYear) {
+      return res.status(400).json({
+        error: "Start month/year and end month/year are required",
+      });
+    }
+
+    const startDate = new Date(startYear, startMonth - 1, 1);
+    const endDate = new Date(endYear, endMonth, 0, 23, 59, 59);
 
     const months = [];
-    let currentDate = new Date(startDate);
-    
+    const currentDate = new Date(startDate);
+
     while (currentDate <= endDate) {
       months.push({
         month: currentDate.getMonth() + 1,
         year: currentDate.getFullYear(),
-        monthName: currentDate.toLocaleString('default', { month: 'long' })
+        monthName: currentDate.toLocaleString("default", { month: "long" }),
       });
+
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    let monthlyData = [];
+    const monthlyData = [];
 
     for (const period of months) {
       const periodStart = new Date(period.year, period.month - 1, 1);
       const periodEnd = new Date(period.year, period.month, 0, 23, 59, 59);
 
       const deliveries = await Delivery.find({
-        date: { $gte: periodStart, $lte: periodEnd }
+        date: { $gte: periodStart, $lte: periodEnd },
       });
 
-      const transactions = await Transaction.find({
-        type: 'PAYMENT',
-        date: { $gte: periodStart, $lte: periodEnd }
-      });
-
-      // Group by bean type for this month
       const beanTypeSummary = {};
-      transactions.forEach(t => {
-        if (t.beanType) {
-          if (!beanTypeSummary[t.beanType]) {
-            beanTypeSummary[t.beanType] = {
-              volumeSold: 0,
-              salesGenerated: 0
-            };
-          }
-          beanTypeSummary[t.beanType].volumeSold += t.volume || 0;
-          beanTypeSummary[t.beanType].salesGenerated += t.amount || 0;
+
+      deliveries.forEach((d) => {
+        const beanType = d.beanType || "Unknown";
+
+        if (!beanTypeSummary[beanType]) {
+          beanTypeSummary[beanType] = {
+            volumeSold: 0,
+            salesGenerated: 0,
+          };
         }
+
+        beanTypeSummary[beanType].volumeSold += Number(d.volume || 0);
+        beanTypeSummary[beanType].salesGenerated += Number(d.totalAmount || 0);
       });
 
       monthlyData.push({
@@ -172,19 +179,34 @@ export const generateMultiMonthReport = async (req, res) => {
         monthName: period.monthName,
         organization: {
           totalDeliveries: deliveries.length,
-          totalVolumeSold: transactions.reduce((sum, t) => sum + (t.volume || 0), 0),
-          totalSalesGenerated: transactions.reduce((sum, t) => sum + (t.amount || 0), 0),
-          uniqueFarmers: new Set(transactions.map(t => t.farmerName)).size,
-          beanTypeSummary
-        }
+          totalVolumeSold: deliveries.reduce(
+            (sum, d) => sum + Number(d.volume || 0),
+            0
+          ),
+          totalSalesGenerated: deliveries.reduce(
+            (sum, d) => sum + Number(d.totalAmount || 0),
+            0
+          ),
+          uniqueFarmers: new Set(deliveries.map((d) => d.farmer)).size,
+          beanTypeSummary,
+        },
       });
     }
 
-    res.json({ success: true, data: monthlyData, reportType, startMonth, startYear, endMonth, endYear });
-
+    return res.json({
+      success: true,
+      data: monthlyData,
+      reportType,
+      startMonth,
+      startYear,
+      endMonth,
+      endYear,
+    });
   } catch (error) {
-    console.error('Multi-month report error:', error);
-    res.status(500).json({ error: 'Failed to generate multi-month report: ' + error.message });
+    console.error("Multi-month report error:", error);
+    return res.status(500).json({
+      error: "Failed to generate multi-month report: " + error.message,
+    });
   }
 };
 
@@ -194,32 +216,34 @@ export const getReportSummary = async (req, res) => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
-    
+
     const { startDate, endDate } = getMonthRange(currentMonth, currentYear);
 
-    const transactions = await Transaction.find({
-      type: 'PAYMENT',
-      date: { $gte: startDate, $lte: endDate }
-    });
-
     const deliveries = await Delivery.find({
-      date: { $gte: startDate, $lte: endDate }
+      date: { $gte: startDate, $lte: endDate },
     });
 
-    const totalSales = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-    const totalVolume = transactions.reduce((sum, t) => sum + (t.volume || 0), 0);
-    const totalDeliveries = deliveries.length;
+    const totalSales = deliveries.reduce(
+      (sum, d) => sum + Number(d.totalAmount || 0),
+      0
+    );
 
-    res.json({
+    const totalVolume = deliveries.reduce(
+      (sum, d) => sum + Number(d.volume || 0),
+      0
+    );
+
+    return res.json({
       success: true,
-      currentMonth: currentDate.toLocaleString('default', { month: 'long' }),
+      currentMonth: currentDate.toLocaleString("default", { month: "long" }),
       currentYear,
       totalSales,
       totalVolume,
-      totalDeliveries,
-      transactionCount: transactions.length
+      totalDeliveries: deliveries.length,
+      transactionCount: deliveries.length,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("REPORT SUMMARY ERROR:", error);
+    return res.status(500).json({ error: error.message });
   }
 };

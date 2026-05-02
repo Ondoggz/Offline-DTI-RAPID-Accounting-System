@@ -5,15 +5,16 @@ export const protect = async (req, res, next) => {
   try {
     let token;
 
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
     }
 
     if (!token) {
-      return res.status(401).json({ message: "Not authorized, no token" });
+      return res.status(401).json({
+        message: "Not authorized, no token",
+      });
     }
 
     if (!process.env.JWT_SECRET) {
@@ -23,13 +24,14 @@ export const protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const userId = decoded.id || decoded.userId;
 
     const user = await User.findById(userId).select("-password");
 
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
+      return res.status(401).json({
+        message: "User not found",
+      });
     }
 
     req.user = {
@@ -43,9 +45,12 @@ export const protect = async (req, res, next) => {
   } catch (error) {
     console.error("AUTH ERROR:", error);
 
-    return res.status(500).json({
+    return res.status(401).json({
       message: "Authentication failed",
       error: error.message,
     });
   }
 };
+
+// compatibility for teammate's report module
+export const authMiddleware = protect;

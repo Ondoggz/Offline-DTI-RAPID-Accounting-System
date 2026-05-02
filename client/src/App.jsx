@@ -123,7 +123,6 @@ function App() {
 
   const isAdmin = currentUser?.role === "admin";
 
-  // ✅ FIXED MODULES
   const modules = [
     ...(isAdmin ? ["admin"] : []),
     "farmers",
@@ -155,7 +154,6 @@ function App() {
       return <FormsGeneration />;
     }
 
-    // ✅ BOTH FEATURES KEPT
     if (selectedModule === "reports") {
       return <ReportModule />;
     }
@@ -222,18 +220,37 @@ function App() {
         {renderMainContent()}
       </div>
 
+      {/* ✅ UPDATED SIDEBAR */}
       <div className="sidebar">
         <div className="profile-card">
           <div className="avatar">👤</div>
 
-          <h3>{currentUser?.username}</h3>
+          <h3>{currentUser?.name || currentUser?.username}</h3>
 
           <p className="role">
             {currentUser?.role === "admin" ? "Admin" : "User"}
           </p>
 
           <p className="meta">
-            Account Created:
+            <strong>Username:</strong>
+            <br />
+            {currentUser?.username || "N/A"}
+          </p>
+
+          <p className="meta">
+            <strong>Position:</strong>
+            <br />
+            {currentUser?.position || "N/A"}
+          </p>
+
+          <p className="meta">
+            <strong>Sex:</strong> {currentUser?.sex || "N/A"}
+            <br />
+            <strong>Age:</strong> {currentUser?.age || "N/A"}
+          </p>
+
+          <p className="meta">
+            <strong>Account Created:</strong>
             <br />
             {currentUser?.createdAt
               ? new Date(currentUser.createdAt).toLocaleString()
