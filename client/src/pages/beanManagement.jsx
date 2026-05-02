@@ -33,7 +33,7 @@ function BeanManagement({ beans, setBeans }) {
     };
 
     fetchBeans();
-  }, []);
+  }, [setBeans]);
 
   const resetForm = () => {
     setForm({
@@ -112,7 +112,7 @@ function BeanManagement({ beans, setBeans }) {
 
   // 🔥 DELETE
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Are you sure?");
+    const confirmed = window.confirm("Are you sure you want to delete this bean?");
     if (!confirmed) return;
 
     try {
@@ -129,7 +129,93 @@ function BeanManagement({ beans, setBeans }) {
   return (
     <div style={{ padding: "20px" }}>
       <h2>Bean Management</h2>
-      {/* UI stays the same */}
+
+      {/* FORM */}
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "grid",
+          gap: "10px",
+          marginBottom: "20px",
+          maxWidth: "700px",
+        }}
+      >
+        <input
+          type="text"
+          name="name"
+          placeholder="Bean name"
+          value={form.name}
+          onChange={handleChange}
+        />
+
+        <input
+          type="number"
+          name="pricePerUnit"
+          placeholder="Price per unit"
+          value={form.pricePerUnit}
+          onChange={handleChange}
+        />
+
+        <input
+          type="text"
+          name="unit"
+          placeholder="Unit"
+          value={form.unit}
+          onChange={handleChange}
+        />
+
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button type="submit">
+            {isEditing ? "Update Bean" : "Add Bean"}
+          </button>
+
+          {isEditing && (
+            <button type="button" onClick={resetForm}>
+              Cancel
+            </button>
+          )}
+        </div>
+      </form>
+
+      {/* TABLE */}
+      <table border="1" cellPadding="10" style={{ width: "100%" }}>
+        <thead>
+          <tr>
+            <th>Bean Name</th>
+            <th>Price Per Unit</th>
+            <th>Unit</th>
+            <th>Farmers</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {beans.length > 0 ? (
+            beans.map((bean) => (
+              <tr key={bean.id}>
+                <td>{bean.name}</td>
+                <td>{bean.pricePerUnit}</td>
+                <td>{bean.unit}</td>
+                <td>
+                  {bean.farmers.length
+                    ? bean.farmers.map((f) => f.name).join(", ")
+                    : "No farmers"}
+                </td>
+                <td>
+                  <button onClick={() => handleEdit(bean)}>Edit</button>{" "}
+                  <button onClick={() => handleDelete(bean.id)}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5">No beans found.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

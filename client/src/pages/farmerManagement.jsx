@@ -150,19 +150,126 @@ function FarmerManagement({ beans = [] }) {
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
 
-      {/* form unchanged */}
+      {/* FORM */}
       <form onSubmit={handleSubmit}>
-        <input name="farmerID" value={form.farmerID} onChange={handleChange} />
-        <input name="name" value={form.name} onChange={handleChange} />
-        <input name="age" value={form.age} onChange={handleChange} />
-        <input name="address" value={form.address} onChange={handleChange} />
-        <input name="contactNumber" value={form.contactNumber} onChange={handleChange} />
-        <input name="emailAddress" value={form.emailAddress} onChange={handleChange} />
+        <input
+          name="farmerID"
+          placeholder="Farmer ID"
+          value={form.farmerID}
+          onChange={handleChange}
+        />
+
+        <input
+          name="name"
+          placeholder="Full Name"
+          value={form.name}
+          onChange={handleChange}
+        />
+
+        <input
+          name="age"
+          type="number"
+          placeholder="Age"
+          value={form.age}
+          onChange={handleChange}
+        />
+
+        <input
+          name="address"
+          placeholder="Address"
+          value={form.address}
+          onChange={handleChange}
+        />
+
+        <input
+          name="contactNumber"
+          placeholder="Contact Number"
+          value={form.contactNumber}
+          onChange={handleChange}
+        />
+
+        <input
+          name="emailAddress"
+          placeholder="Email Address"
+          value={form.emailAddress}
+          onChange={handleChange}
+        />
+
+        {/* BEANS */}
+        <div>
+          <p>Bean Types</p>
+
+          {form.beans.map((bean, i) => (
+            <div key={i}>
+              <select
+                value={bean}
+                onChange={(e) => handleBeanChange(i, e.target.value)}
+              >
+                <option value="">Select bean type</option>
+                {beans.map((b) => (
+                  <option key={b._id || b.id} value={b._id || b.id}>
+                    {b.beanName || b.name}
+                  </option>
+                ))}
+              </select>
+
+              <button type="button" onClick={addBeanField}>
+                +
+              </button>
+
+              {form.beans.length > 1 && (
+                <button type="button" onClick={() => removeBeanField(i)}>
+                  -
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
 
         <button type="submit">
           {isEditing ? "Update Farmer" : "Add Farmer"}
         </button>
       </form>
+
+      {/* TABLE */}
+      <table border="1" style={{ width: "100%", marginTop: "20px" }}>
+        <thead>
+          <tr>
+            <th>Farmer ID</th>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Address</th>
+            <th>Contact</th>
+            <th>Email</th>
+            <th>Beans</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {farmers.map((f) => (
+            <tr key={f.id}>
+              <td>{f.farmerID || "-"}</td>
+              <td>{f.name || "-"}</td>
+              <td>{f.age || "-"}</td>
+              <td>{f.address || "-"}</td>
+              <td>{f.contactNumber || "-"}</td>
+              <td>{f.emailAddress || "-"}</td>
+
+              <td>
+                {f.beans?.length
+                  ? f.beans.map((b) => b.beanName || b.name || b).join(", ")
+                  : "-"}
+              </td>
+
+              <td>
+                <button onClick={() => handleEdit(f)}>Edit</button>
+                <button onClick={() => handleDelete(f.id)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
