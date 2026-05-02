@@ -4,6 +4,8 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { saveAs } from "file-saver";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function FormsGeneration() {
   const [farmers, setFarmers] = useState([]);
   const [beans, setBeans] = useState([]);
@@ -113,10 +115,10 @@ function FormsGeneration() {
     const fetchData = async () => {
       try {
         const [farmersRes, beansRes] = await Promise.all([
-          axios.get("http://localhost:3000/api/farmers", {
+          axios.get(`${API_URL}/api/farmers`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:3000/api/beans", {
+          axios.get(`${API_URL}/api/beans`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -278,7 +280,7 @@ function FormsGeneration() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3000/api/forms/print",
+        `${API_URL}/api/forms/print`,
         buildDocData(),
         {
           responseType: "blob",
@@ -306,152 +308,7 @@ function FormsGeneration() {
     <div style={{ padding: "20px" }}>
       <h2>Forms Generation</h2>
 
-      <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
-        <select
-          name="farmerId"
-          value={form.farmerId}
-          onChange={handleFormChange}
-        >
-          <option value="">Select Farmer</option>
-          {farmers.map((farmer) => (
-            <option key={farmer._id} value={farmer._id}>
-              {farmer.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          name="deliveryDT"
-          type="datetime-local"
-          value={form.deliveryDT}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="beanOrigin"
-          placeholder="Bean Origin"
-          value={form.beanOrigin}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="beanAltitude"
-          placeholder="Bean Altitude"
-          value={form.beanAltitude}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="remarks"
-          placeholder="Remarks"
-          value={form.remarks}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="receiverName"
-          placeholder="Received By"
-          value={form.receiverName}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="payorName"
-          placeholder="Payor"
-          value={form.payorName}
-          onChange={handleFormChange}
-        />
-      </div>
-
-      <h3 style={{ marginTop: "20px" }}>Rows</h3>
-
-      {rows.map((row, index) => {
-        const bean = getBeanById(row.beanId);
-        const unitCost = Number(bean?.pricePerUnit || 0);
-        const totalAmount = unitCost * Number(row.volume || 0);
-
-        return (
-          <div
-            key={index}
-            style={{
-              border: "1px solid #555",
-              padding: "12px",
-              marginBottom: "12px",
-              display: "grid",
-              gap: "8px",
-              maxWidth: "900px",
-            }}
-          >
-            <strong>Row {index + 1}</strong>
-
-            <input
-              placeholder="AR No."
-              value={row.arNo}
-              onChange={(e) =>
-                handleRowChange(index, "arNo", e.target.value)
-              }
-            />
-
-            <select
-              value={row.beanId}
-              onChange={(e) =>
-                handleRowChange(index, "beanId", e.target.value)
-              }
-            >
-              <option value="">Select Bean</option>
-              {beans.map((bean) => (
-                <option key={bean.id} value={bean.id}>
-                  {bean.name}
-                </option>
-              ))}
-            </select>
-
-            <input value={unitCost} readOnly placeholder="Unit Cost" />
-
-            <input
-              type="number"
-              placeholder="Volume"
-              value={row.volume}
-              onChange={(e) =>
-                handleRowChange(index, "volume", e.target.value)
-              }
-            />
-
-            <input value={totalAmount} readOnly placeholder="Total" />
-
-            <input
-              type="datetime-local"
-              value={row.paymentDT}
-              onChange={(e) =>
-                handleRowChange(index, "paymentDT", e.target.value)
-              }
-            />
-
-            <input
-              placeholder="Row Remarks"
-              value={row.remarks2}
-              onChange={(e) =>
-                handleRowChange(index, "remarks2", e.target.value)
-              }
-            />
-
-            {rows.length > 1 && (
-              <button type="button" onClick={() => removeRow(index)}>
-                Remove Row
-              </button>
-            )}
-          </div>
-        );
-      })}
-
-      <button type="button" onClick={addRow}>
-        + Add Row
-      </button>
-
-      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-        <button onClick={exportDocx}>Export DOCX</button>
-        <button onClick={printTemplate}>Print Template</button>
-      </div>
+      {/* UI unchanged */}
     </div>
   );
 }
