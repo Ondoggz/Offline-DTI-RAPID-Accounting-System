@@ -57,7 +57,9 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(`${import.meta.env.VITE_API_URL}/auth/me`);
+            const res = await authFetch(
+              `${import.meta.env.VITE_API_URL}/auth/me`
+            );
 
             if (!res.ok) {
               clearSession();
@@ -66,7 +68,8 @@ function App() {
               setIsLoggedIn(true);
               setCurrentUser(data.user);
 
-              const remaining = SESSION_TIMEOUT - (now - Number(lastActivity));
+              const remaining =
+                SESSION_TIMEOUT - (now - Number(lastActivity));
               timeoutRef.current = setTimeout(clearSession, remaining);
             }
           } catch {
@@ -187,7 +190,7 @@ function App() {
         <div className="status">
           <p>{message}</p>
           {dbTime && <p>Database time: {dbTime}</p>}
-          <p>Logged in as: {currentUser.username}</p>
+          <p>Logged in as: {currentUser?.username}</p>
         </div>
       </>
     );
@@ -211,7 +214,23 @@ function App() {
       </div>
 
       <div className="sidebar">
-        <input className="search" placeholder="Search..." />
+        <div className="profile-card">
+          <div className="avatar">👤</div>
+
+          <h3>{currentUser?.username}</h3>
+
+          <p className="role">
+            {currentUser?.role === "admin" ? "Admin" : "User"}
+          </p>
+
+          <p className="meta">
+            Account Created:
+            <br />
+            {currentUser?.createdAt
+              ? new Date(currentUser.createdAt).toLocaleString()
+              : "N/A"}
+          </p>
+        </div>
 
         <button className="logout" onClick={handleLogout}>
           Logout
