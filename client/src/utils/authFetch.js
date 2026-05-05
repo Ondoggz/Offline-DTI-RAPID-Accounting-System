@@ -1,11 +1,21 @@
-export async function authFetch(url, options = {}) {
+const API_URL = import.meta.env.VITE_API_URL;
+
+export async function authFetch(endpoint, options = {}) {
   const token = localStorage.getItem("token");
+
+  // ✅ Normalize endpoint
+  let url = endpoint;
+
+  // if endpoint is NOT full URL, attach base
+  if (!url.startsWith("http")) {
+    url = `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+  }
 
   const res = await fetch(url, {
     ...options,
     headers: {
       ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
+      Authorization: token ? `Bearer ${token}` : "",
       "Content-Type": "application/json",
     },
   });
@@ -19,32 +29,3 @@ export async function authFetch(url, options = {}) {
 
   return res;
 }
-
-//for beans module
-export const getBeans = async () => {
-  const res = await authFetch("/api/beans");
-  return res.json();
-};
-
-export const createBean = async (data) => {
-  const res = await authFetch("/api/beans", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-  return res.json();
-};
-
-export const updateBean = async (id, data) => {
-  const res = await authFetch(`/api/beans/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-  return res.json();
-};
-
-export const deleteBean = async (id) => {
-  const res = await authFetch(`/api/beans/${id}`, {
-    method: "DELETE",
-  });
-  return res.json();
-};
