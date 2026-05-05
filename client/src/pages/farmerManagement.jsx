@@ -28,6 +28,8 @@ function FarmerManagement({ beans = [] }) {
     },
   };
 
+  const validBeans = beans.filter((b) => b._id);
+
   const fetchFarmers = async () => {
     try {
       const res = await axios.get(`${API}/api/farmers`, authHeaders);
@@ -94,6 +96,14 @@ function FarmerManagement({ beans = [] }) {
     if (!form.emailAddress.trim()) return "Email address is required.";
     if (cleanedBeans.length === 0) return "Please select at least one bean type.";
 
+    const invalidBean = cleanedBeans.find(
+      (beanId) => !validBeans.some((b) => b._id === beanId)
+    );
+
+    if (invalidBean) {
+      return "Invalid bean selected. Please reselect the bean type.";
+    }
+
     return null;
   };
 
@@ -150,7 +160,7 @@ function FarmerManagement({ beans = [] }) {
       emailAddress: farmer.emailAddress || "",
       beans:
         farmer.beans?.length > 0
-          ? farmer.beans.map((b) => b._id || b.id || b)
+          ? farmer.beans.map((b) => b._id || "").filter(Boolean)
           : [""],
     });
 
@@ -229,8 +239,8 @@ function FarmerManagement({ beans = [] }) {
               >
                 <option value="">Select bean type</option>
 
-                {beans.map((b) => (
-                  <option key={b._id || b.id} value={b._id || b.id}>
+                {validBeans.map((b) => (
+                  <option key={b._id} value={b._id}>
                     {b.beanName || b.name}
                   </option>
                 ))}
@@ -286,7 +296,10 @@ function FarmerManagement({ beans = [] }) {
 
               <td>
                 {f.beans?.length
-                  ? f.beans.map((b) => b.beanName || b.name || b).join(", ")
+                  ? f.beans
+                      .map((b) => b.beanName || b.name || "")
+                      .filter(Boolean)
+                      .join(", ")
                   : "-"}
               </td>
 
