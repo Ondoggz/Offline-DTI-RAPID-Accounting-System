@@ -4,6 +4,8 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { saveAs } from "file-saver";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function FormsGeneration() {
   const [farmers, setFarmers] = useState([]);
   const [beans, setBeans] = useState([]);
@@ -31,101 +33,25 @@ function FormsGeneration() {
   const token = localStorage.getItem("token");
   const API = import.meta.env.VITE_API_URL;
 
-  const numberToWords = (num) => {
-    const ones = [
-      "",
-      "One",
-      "Two",
-      "Three",
-      "Four",
-      "Five",
-      "Six",
-      "Seven",
-      "Eight",
-      "Nine",
-      "Ten",
-      "Eleven",
-      "Twelve",
-      "Thirteen",
-      "Fourteen",
-      "Fifteen",
-      "Sixteen",
-      "Seventeen",
-      "Eighteen",
-      "Nineteen",
-    ];
-
-    const tens = [
-      "",
-      "",
-      "Twenty",
-      "Thirty",
-      "Forty",
-      "Fifty",
-      "Sixty",
-      "Seventy",
-      "Eighty",
-      "Ninety",
-    ];
-
-    const convertHundreds = (n) => {
-      let word = "";
-
-      if (n >= 100) {
-        word += `${ones[Math.floor(n / 100)]} Hundred `;
-        n %= 100;
-      }
-
-      if (n >= 20) {
-        word += `${tens[Math.floor(n / 10)]} `;
-        n %= 10;
-      }
-
-      if (n > 0) {
-        word += `${ones[n]} `;
-      }
-
-      return word.trim();
-    };
-
-    if (!num || Number(num) === 0) return "Zero Pesos Only";
-
-    let words = "";
-    let n = Math.floor(Number(num));
-
-    if (n >= 1000000) {
-      words += `${convertHundreds(Math.floor(n / 1000000))} Million `;
-      n %= 1000000;
-    }
-
-    if (n >= 1000) {
-      words += `${convertHundreds(Math.floor(n / 1000))} Thousand `;
-      n %= 1000;
-    }
-
-    if (n > 0) {
-      words += convertHundreds(n);
-    }
-
-    return `${words.trim()} Pesos Only`;
-  };
-
+  /* =========================
+     FETCH DATA
+  ========================= */
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [farmersRes, beansRes] = await Promise.all([
-          axios.get(`${API}/api/farmers`, {
+          axios.get(`${API_URL}/api/farmers`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get(`${API}/api/beans`, {
+          axios.get(`${API_URL}/api/beans`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
 
-        setFarmers(farmersRes.data);
+        setFarmers(farmersRes.data || []);
 
         setBeans(
-          beansRes.data.map((bean) => ({
+          (beansRes.data || []).map((bean) => ({
             id: bean._id,
             name: bean.beanName,
             pricePerUnit: bean.pricePerUnit,
@@ -133,8 +59,7 @@ function FormsGeneration() {
           }))
         );
       } catch (err) {
-        console.error(err);
-        alert("Failed to load farmers or beans.");
+        console.error("Fetch error:", err);
       }
     };
 
@@ -143,78 +68,39 @@ function FormsGeneration() {
     }
   }, [API, token]);
 
+  /* =========================
+     HELPERS
+  ========================= */
   const selectedFarmer = useMemo(() => {
-    return farmers.find((farmer) => farmer._id === form.farmerId);
+    return farmers.find((f) => f._id === form.farmerId) || null;
   }, [farmers, form.farmerId]);
 
-  const getBeanById = (beanId) => {
-    return beans.find((bean) => bean.id === beanId);
-  };
+  const getBeanById = (id) => beans.find((b) => b.id === id);
 
+  /* =========================
+     ROW CALCULATIONS
+  ========================= */
   const computedRows = rows.map((row) => {
     const bean = getBeanById(row.beanId);
     const unitCost = Number(bean?.pricePerUnit || 0);
     const volume = Number(row.volume || 0);
-    const totalAmount = unitCost * volume;
 
     return {
-      arNo: row.arNo,
+      ...row,
       particulars: bean?.name || "",
       unitCost,
-      volume: row.volume,
-      totalAmount,
-      totalPayable: totalAmount,
-      paymentDT: row.paymentDT,
-      payment_DT: row.paymentDT,
-      remarks2: row.remarks2,
+      totalAmount: unitCost * volume,
     };
   });
 
   const grandTotal = computedRows.reduce(
-    (sum, row) => sum + Number(row.totalAmount || 0),
+    (sum, r) => sum + Number(r.totalAmount || 0),
     0
   );
 
-  const buildDocData = () => ({
-    idNumber: selectedFarmer?.farmerID || "",
-    name: selectedFarmer?.name || "",
-    residentialAddress: selectedFarmer?.address || "",
-    farmAddress: selectedFarmer?.farmAddress || selectedFarmer?.address || "",
-    sex: selectedFarmer?.sex || "",
-    age: selectedFarmer?.age || "",
-    contactNumber: selectedFarmer?.contactNumber || "",
-    emailAddress: selectedFarmer?.emailAddress || "",
-
-    deliveryDT: form.deliveryDT,
-    beanOrigin: form.beanOrigin,
-    beanAltitude: form.beanAltitude,
-    remarks: form.remarks,
-
-    senderName: selectedFarmer?.name || "",
-    receiverName: form.receiverName,
-    payeeName: selectedFarmer?.name || "",
-    payorName: form.payorName,
-
-    amountInFigures: grandTotal,
-    amountInWords: numberToWords(grandTotal),
-
-    rows: computedRows,
-  });
-
-  const validateForm = () => {
-    if (!selectedFarmer) {
-      alert("Please select a farmer.");
-      return false;
-    }
-
-    if (computedRows.some((row) => !row.particulars || !row.volume)) {
-      alert("Please complete all row bean types and volumes.");
-      return false;
-    }
-
-    return true;
-  };
-
+  /* =========================
+     FORM HANDLERS
+  ========================= */
   const handleFormChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -224,7 +110,7 @@ function FormsGeneration() {
 
   const handleRowChange = (index, field, value) => {
     setRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
     );
   };
 
@@ -247,6 +133,48 @@ function FormsGeneration() {
     );
   };
 
+  /* =========================
+     VALIDATION
+  ========================= */
+  const validateForm = () => {
+    if (!selectedFarmer) {
+      alert("Please select a farmer.");
+      return false;
+    }
+
+    if (computedRows.some((r) => !r.beanId || !r.volume)) {
+      alert("Please complete all rows.");
+      return false;
+    }
+
+    return true;
+  };
+
+  /* =========================
+     DOC DATA
+  ========================= */
+  const buildDocData = () => ({
+    idNumber: selectedFarmer?.farmerID || "",
+    name: selectedFarmer?.name || "",
+    address: selectedFarmer?.address || "",
+    contactNumber: selectedFarmer?.contactNumber || "",
+    emailAddress: selectedFarmer?.emailAddress || "",
+
+    deliveryDT: form.deliveryDT,
+    beanOrigin: form.beanOrigin,
+    beanAltitude: form.beanAltitude,
+    remarks: form.remarks,
+
+    receiverName: form.receiverName,
+    payorName: form.payorName,
+
+    amountInFigures: grandTotal,
+    rows: computedRows,
+  });
+
+  /* =========================
+     DOCX EXPORT
+  ========================= */
   const exportDocx = async () => {
     if (!validateForm()) return;
 
@@ -268,19 +196,22 @@ function FormsGeneration() {
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       });
 
-      saveAs(blob, `Palamboon-${selectedFarmer.name || "form"}.docx`);
+      saveAs(blob, `Form-${selectedFarmer?.name || "output"}.docx`);
     } catch (err) {
       console.error(err);
-      alert("Failed to generate DOCX. Check your placeholders.");
+      alert("DOCX generation failed.");
     }
   };
 
+  /* =========================
+     PRINT
+  ========================= */
   const printTemplate = async () => {
     if (!validateForm()) return;
 
     try {
-      const response = await axios.post(
-        `${API}/api/forms/print`,
+      const res = await axios.post(
+        `${API_URL}/api/forms/print`,
         buildDocData(),
         {
           responseType: "blob",
@@ -288,32 +219,28 @@ function FormsGeneration() {
         }
       );
 
-      const pdfBlob = new Blob([response.data], {
+      const pdfBlob = new Blob([res.data], {
         type: "application/pdf",
       });
 
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const printWindow = window.open(pdfUrl, "_blank");
+      const url = URL.createObjectURL(pdfBlob);
+      const win = window.open(url);
 
-      if (!printWindow) {
-        alert("Popup blocked. Please allow popups for this site.");
-        return;
-      }
-
-      printWindow.onload = () => {
-        printWindow.focus();
-        printWindow.print();
-      };
+      win.onload = () => win.print();
     } catch (err) {
       console.error(err);
-      alert("Failed to print template.");
+      alert("Print failed.");
     }
   };
 
+  /* =========================
+     UI
+  ========================= */
   return (
     <div style={{ padding: "20px" }}>
       <h2>Forms Generation</h2>
 
+      {/* FORM */}
       <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
         <select
           name="farmerId"
@@ -321,16 +248,16 @@ function FormsGeneration() {
           onChange={handleFormChange}
         >
           <option value="">Select Farmer</option>
-          {farmers.map((farmer) => (
-            <option key={farmer._id} value={farmer._id}>
-              {farmer.name}
+          {farmers.map((f) => (
+            <option key={f._id} value={f._id}>
+              {f.name}
             </option>
           ))}
         </select>
 
         <input
-          name="deliveryDT"
           type="datetime-local"
+          name="deliveryDT"
           value={form.deliveryDT}
           onChange={handleFormChange}
         />
@@ -358,107 +285,82 @@ function FormsGeneration() {
 
         <input
           name="receiverName"
-          placeholder="Received By"
+          placeholder="Receiver Name"
           value={form.receiverName}
           onChange={handleFormChange}
         />
 
         <input
           name="payorName"
-          placeholder="Payor"
+          placeholder="Payor Name"
           value={form.payorName}
           onChange={handleFormChange}
         />
       </div>
 
+      {/* ROWS */}
       <h3 style={{ marginTop: "20px" }}>Rows</h3>
 
-      {rows.map((row, index) => {
+      {rows.map((row, i) => {
         const bean = getBeanById(row.beanId);
-        const unitCost = Number(bean?.pricePerUnit || 0);
-        const totalAmount = unitCost * Number(row.volume || 0);
+        const unitCost = bean?.pricePerUnit || 0;
+        const total = unitCost * (row.volume || 0);
 
         return (
-          <div
-            key={index}
-            style={{
-              border: "1px solid #555",
-              padding: "12px",
-              marginBottom: "12px",
-              display: "grid",
-              gap: "8px",
-              maxWidth: "900px",
-            }}
-          >
-            <strong>Row {index + 1}</strong>
+          <div key={i} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px" }}>
+            <strong>Row {i + 1}</strong>
 
             <input
-              placeholder="AR No."
+              placeholder="AR No"
               value={row.arNo}
-              onChange={(e) =>
-                handleRowChange(index, "arNo", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "arNo", e.target.value)}
             />
 
             <select
               value={row.beanId}
-              onChange={(e) =>
-                handleRowChange(index, "beanId", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "beanId", e.target.value)}
             >
               <option value="">Select Bean</option>
-              {beans.map((bean) => (
-                <option key={bean.id} value={bean.id}>
-                  {bean.name}
+              {beans.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
                 </option>
               ))}
             </select>
 
-            <input value={unitCost} readOnly placeholder="Unit Cost" />
-
+            <input value={unitCost} readOnly />
             <input
               type="number"
               placeholder="Volume"
               value={row.volume}
-              onChange={(e) =>
-                handleRowChange(index, "volume", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "volume", e.target.value)}
             />
 
-            <input value={totalAmount} readOnly placeholder="Total" />
+            <input value={total} readOnly />
 
             <input
               type="datetime-local"
               value={row.paymentDT}
-              onChange={(e) =>
-                handleRowChange(index, "paymentDT", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "paymentDT", e.target.value)}
             />
 
             <input
-              placeholder="Row Remarks"
+              placeholder="Remarks"
               value={row.remarks2}
-              onChange={(e) =>
-                handleRowChange(index, "remarks2", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "remarks2", e.target.value)}
             />
 
-            {rows.length > 1 && (
-              <button type="button" onClick={() => removeRow(index)}>
-                Remove Row
-              </button>
-            )}
+            <button onClick={() => removeRow(i)}>Remove</button>
           </div>
         );
       })}
 
-      <button type="button" onClick={addRow}>
-        + Add Row
-      </button>
+      <button onClick={addRow}>+ Add Row</button>
 
-      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+      {/* ACTIONS */}
+      <div style={{ marginTop: "20px" }}>
         <button onClick={exportDocx}>Export DOCX</button>
-        <button onClick={printTemplate}>Print Template</button>
+        <button onClick={printTemplate}>Print</button>
       </div>
     </div>
   );

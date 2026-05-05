@@ -1,5 +1,5 @@
-import Bean from "../models/Bean.js";
-import Farmer from "../models/Farmer.js";
+import Bean from "../models/bean.js";
+import Farmer from "../models/farmer.js";
 
 // 📌 CREATE Bean
 export const createBean = async (req, res) => {
