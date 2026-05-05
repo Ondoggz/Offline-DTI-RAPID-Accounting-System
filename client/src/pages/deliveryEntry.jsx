@@ -3,24 +3,28 @@ import axios from "axios";
 import "./delivery.css";
 
 function DeliveryEntry() {
+  const API = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const authHeaders = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
   const [showForm, setShowForm] = useState(false);
   const [deliveries, setDeliveries] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [beans, setBeans] = useState([]);
   const [file, setFile] = useState(null);
 
-  const API = import.meta.env.VITE_API_URL;
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-
   const getRecordedBy = () => {
-    if (user?.name && user?.position) {
-      return `${user.name} (${user.position})`;
-    }
-    return user?.name || user?.username || "";
+    if (user?.name && user?.position) return `${user.name} (${user.position})`;
+    return user?.name || user?.username || "Unknown User";
   };
 
-  const [form, setForm] = useState({
+  const emptyForm = {
     farmer: "",
     farmerContact: "",
     beanType: "",
@@ -32,34 +36,29 @@ function DeliveryEntry() {
     consigneeContact: "",
     recordedBy: getRecordedBy(),
     volume: "",
-  });
+  };
+
+  const [form, setForm] = useState(emptyForm);
+
+  const fetchData = async () => {
+    try {
+      const [dRes, fRes, bRes] = await Promise.all([
+        axios.get(`${API}/api/deliveries`, authHeaders),
+        axios.get(`${API}/api/farmers`, authHeaders),
+        axios.get(`${API}/api/beans`, authHeaders),
+      ]);
+
+      setDeliveries(Array.isArray(dRes.data) ? dRes.data : dRes.data.data || []);
+      setFarmers(Array.isArray(fRes.data) ? fRes.data : fRes.data.data || []);
+      setBeans(Array.isArray(bRes.data) ? bRes.data : bRes.data.data || []);
+    } catch (err) {
+      console.error("FETCH ERROR:", err.response?.data || err.message);
+      alert(err.response?.data?.message || "Failed to load delivery data.");
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [dRes, fRes, bRes] = await Promise.all([
-          axios.get(`${API}/api/deliveries`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${API}/api/farmers`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${API}/api/beans`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        setDeliveries(dRes.data);
-        setFarmers(fRes.data);
-        setBeans(bRes.data);
-      } catch (err) {
-        console.error("FETCH ERROR:", err);
-      }
-    };
-
-    if (API && token) {
-      fetchData();
-    }
+    if (API && token) fetchData();
   }, [API, token]);
 
   const handleChange = (e) => {
@@ -68,53 +67,74 @@ function DeliveryEntry() {
     if (name === "farmer") {
       const selectedFarmer = farmers.find((f) => f.name === value);
 
-      setForm({
-        ...form,
+      setForm((prev) => ({
+        ...prev,
         farmer: value,
         farmerContact:
           selectedFarmer?.contactNumber ||
           selectedFarmer?.farmerContact ||
           selectedFarmer?.contact ||
           "",
-      });
+      }));
 
       return;
     }
 
-    setForm({ ...form, [name]: value });
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const selectedBean = beans.find((b) => b.beanName === form.beanType);
+  const selectedBean = beans.find((b) => b.beanName === form.beanType || b.name === form.beanType);
 
-  const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
-  const totalAmount = Number(form.volume || 0) * pricePerUnit;
+  const pricePerUnit = Number(selectedBean?.pricePerUnit || selectedBean?.price || 0);
+  const volume = Number(form.volume || 0);
+  const totalAmount = volume * pricePerUnit;
 
   const resetForm = () => {
     setForm({
-      farmer: "",
-      farmerContact: "",
-      beanType: "",
-      courier: "",
-      date: "",
-      deliveryGuy: "",
-      consignee: "",
-      deliveryGuyContact: "",
-      consigneeContact: "",
+      ...emptyForm,
       recordedBy: getRecordedBy(),
-      volume: "",
     });
-
     setFile(null);
   };
 
+  const validateForm = () => {
+    if (!form.farmer) return "Please select a farmer.";
+    if (!form.beanType) return "Please select a bean type.";
+    if (!form.volume || Number(form.volume) <= 0) return "Please enter a valid volume.";
+    if (!form.courier) return "Please enter courier.";
+    if (!form.date) return "Please select a date.";
+    if (!form.deliveryGuy) return "Please enter delivery guy.";
+    if (!form.deliveryGuyContact) return "Please enter delivery guy contact.";
+    if (!form.consignee) return "Please enter consignee.";
+    if (!form.consigneeContact) return "Please enter consignee contact.";
+    return null;
+  };
+
   const handleSubmit = async () => {
+    const validationError = validateForm();
+
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
     try {
       const data = new FormData();
 
-      Object.keys(form).forEach((key) => {
-        data.append(key, form[key]);
-      });
-
+      data.append("farmer", form.farmer);
+      data.append("farmerContact", form.farmerContact);
+      data.append("beanType", form.beanType);
+      data.append("courier", form.courier);
+      data.append("date", form.date);
+      data.append("deliveryGuy", form.deliveryGuy);
+      data.append("consignee", form.consignee);
+      data.append("deliveryGuyContact", form.deliveryGuyContact);
+      data.append("consigneeContact", form.consigneeContact);
+      data.append("recordedBy", form.recordedBy || getRecordedBy());
+      data.append("volume", Number(form.volume));
       data.append("pricePerUnit", pricePerUnit);
       data.append("totalAmount", totalAmount);
 
@@ -130,20 +150,12 @@ function DeliveryEntry() {
 
       const savedDelivery = res.data.data || res.data;
 
-      if (savedDelivery && savedDelivery._id) {
-        setDeliveries((prev) => [savedDelivery, ...prev]);
-      } else {
-        const refresh = await axios.get(`${API}/api/deliveries`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setDeliveries(refresh.data);
-      }
-
+      setDeliveries((prev) => [savedDelivery, ...prev]);
       setShowForm(false);
       resetForm();
     } catch (err) {
-      console.error("SUBMIT ERROR:", err);
-      alert("Failed to save delivery.");
+      console.error("SUBMIT ERROR:", err.response?.data || err.message);
+      alert(err.response?.data?.message || "Failed to save delivery.");
     }
   };
 
@@ -161,8 +173,8 @@ function DeliveryEntry() {
 
       setDeliveries((prev) => prev.filter((d) => d._id !== id));
     } catch (err) {
-      console.error("DELETE ERROR:", err);
-      alert("Delete failed.");
+      console.error("DELETE ERROR:", err.response?.data || err.message);
+      alert(err.response?.data?.message || "Delete failed.");
     }
   };
 
@@ -229,15 +241,11 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Bean Type</label>
-            <select
-              name="beanType"
-              onChange={handleChange}
-              value={form.beanType}
-            >
+            <select name="beanType" onChange={handleChange} value={form.beanType}>
               <option value="">Select bean</option>
               {beans.map((b) => (
-                <option key={b._id} value={b.beanName}>
-                  {b.beanName}
+                <option key={b._id} value={b.beanName || b.name}>
+                  {b.beanName || b.name}
                 </option>
               ))}
             </select>
@@ -245,12 +253,7 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Volume</label>
-            <input
-              type="number"
-              name="volume"
-              value={form.volume}
-              onChange={handleChange}
-            />
+            <input type="number" name="volume" value={form.volume} onChange={handleChange} />
           </div>
 
           <div className="form-group">
@@ -270,48 +273,27 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Date</label>
-            <input
-              type="date"
-              name="date"
-              value={form.date}
-              onChange={handleChange}
-            />
+            <input type="date" name="date" value={form.date} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy</label>
-            <input
-              name="deliveryGuy"
-              value={form.deliveryGuy}
-              onChange={handleChange}
-            />
+            <input name="deliveryGuy" value={form.deliveryGuy} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy Contact No.</label>
-            <input
-              name="deliveryGuyContact"
-              value={form.deliveryGuyContact}
-              onChange={handleChange}
-            />
+            <input name="deliveryGuyContact" value={form.deliveryGuyContact} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Consignee</label>
-            <input
-              name="consignee"
-              value={form.consignee}
-              onChange={handleChange}
-            />
+            <input name="consignee" value={form.consignee} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label>Consignee Contact No.</label>
-            <input
-              name="consigneeContact"
-              value={form.consigneeContact}
-              onChange={handleChange}
-            />
+            <input name="consigneeContact" value={form.consigneeContact} onChange={handleChange} />
           </div>
 
           <div className="form-group">
