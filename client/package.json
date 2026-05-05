@@ -16,6 +16,8 @@
     "docxtemplater": "^3.68.6",
     "dotenv": "^17.4.2",
     "file-saver": "^2.0.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "pizzip": "^3.2.0",
     "react": "^19.2.4",
     "react-chartjs-2": "^5.3.1",

@@ -261,27 +261,48 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Date</label>
-            <input type="date" name="date" value={form.date} onChange={handleChange} />
+            <input
+              type="date"
+              name="date"
+              value={form.date}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy</label>
-            <input name="deliveryGuy" value={form.deliveryGuy} onChange={handleChange} />
+            <input
+              name="deliveryGuy"
+              value={form.deliveryGuy}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy Contact No.</label>
-            <input name="deliveryGuyContact" value={form.deliveryGuyContact} onChange={handleChange} />
+            <input
+              name="deliveryGuyContact"
+              value={form.deliveryGuyContact}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Consignee</label>
-            <input name="consignee" value={form.consignee} onChange={handleChange} />
+            <input
+              name="consignee"
+              value={form.consignee}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Consignee Contact No.</label>
-            <input name="consigneeContact" value={form.consigneeContact} onChange={handleChange} />
+            <input
+              name="consigneeContact"
+              value={form.consigneeContact}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">

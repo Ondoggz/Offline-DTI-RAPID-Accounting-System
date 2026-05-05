@@ -31,6 +31,7 @@ function FormsGeneration() {
   ]);
 
   const token = localStorage.getItem("token");
+  const API = import.meta.env.VITE_API_URL;
 
   /* =========================
      FETCH DATA
@@ -62,8 +63,10 @@ function FormsGeneration() {
       }
     };
 
-    fetchData();
-  }, [token]);
+    if (API && token) {
+      fetchData();
+    }
+  }, [API, token]);
 
   /* =========================
      HELPERS

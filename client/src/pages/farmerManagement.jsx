@@ -4,6 +4,9 @@ import axios from "axios";
 const API_URL = import.meta.env.VITE_API_URL;
 
 function FarmerManagement({ beans = [] }) {
+  const API = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
+
   const [farmers, setFarmers] = useState([]);
 
   const [form, setForm] = useState({
@@ -18,7 +21,6 @@ function FarmerManagement({ beans = [] }) {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const token = localStorage.getItem("token");
 
   const fetchFarmers = async () => {
     try {
@@ -39,13 +41,14 @@ function FarmerManagement({ beans = [] }) {
         }))
       );
     } catch (err) {
-      console.error(err);
+      console.error("FETCH FARMERS ERROR:", err);
+      alert(err.response?.data?.message || "Failed to fetch farmers.");
     }
   };
 
   useEffect(() => {
-    fetchFarmers();
-  }, []);
+    if (API && token) fetchFarmers();
+  }, [API, token]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -113,7 +116,8 @@ function FarmerManagement({ beans = [] }) {
       fetchFarmers();
       resetForm();
     } catch (err) {
-      console.error(err);
+      console.error("SAVE FARMER ERROR:", err);
+      alert(err.response?.data?.message || "Failed to save farmer.");
     }
   };
 
@@ -142,7 +146,8 @@ function FarmerManagement({ beans = [] }) {
 
       setFarmers((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
-      console.error(err);
+      console.error("DELETE FARMER ERROR:", err);
+      alert(err.response?.data?.message || "Failed to delete farmer.");
     }
   };
 
@@ -229,9 +234,14 @@ function FarmerManagement({ beans = [] }) {
         <button type="submit">
           {isEditing ? "Update Farmer" : "Add Farmer"}
         </button>
+
+        {isEditing && (
+          <button type="button" onClick={resetForm}>
+            Cancel Edit
+          </button>
+        )}
       </form>
 
-      {/* TABLE */}
       <table border="1" style={{ width: "100%", marginTop: "20px" }}>
         <thead>
           <tr>
@@ -261,7 +271,6 @@ function FarmerManagement({ beans = [] }) {
                   ? f.beans.map((b) => b.beanName || b.name || b).join(", ")
                   : "-"}
               </td>
-
               <td>
                 <button onClick={() => handleEdit(f)}>Edit</button>
                 <button onClick={() => handleDelete(f.id)}>Delete</button>
