@@ -29,6 +29,7 @@ function FormsGeneration() {
   ]);
 
   const token = localStorage.getItem("token");
+  const API = import.meta.env.VITE_API_URL;
 
   const numberToWords = (num) => {
     const ones = [
@@ -113,10 +114,10 @@ function FormsGeneration() {
     const fetchData = async () => {
       try {
         const [farmersRes, beansRes] = await Promise.all([
-          axios.get("http://localhost:3000/api/farmers", {
+          axios.get(`${API}/api/farmers`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:3000/api/beans", {
+          axios.get(`${API}/api/beans`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -133,11 +134,14 @@ function FormsGeneration() {
         );
       } catch (err) {
         console.error(err);
+        alert("Failed to load farmers or beans.");
       }
     };
 
-    fetchData();
-  }, [token]);
+    if (API && token) {
+      fetchData();
+    }
+  }, [API, token]);
 
   const selectedFarmer = useMemo(() => {
     return farmers.find((farmer) => farmer._id === form.farmerId);
@@ -220,9 +224,7 @@ function FormsGeneration() {
 
   const handleRowChange = (index, field, value) => {
     setRows((prev) =>
-      prev.map((row, i) =>
-        i === index ? { ...row, [field]: value } : row
-      )
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
   };
 
@@ -278,7 +280,7 @@ function FormsGeneration() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3000/api/forms/print",
+        `${API}/api/forms/print`,
         buildDocData(),
         {
           responseType: "blob",
@@ -291,9 +293,15 @@ function FormsGeneration() {
       });
 
       const pdfUrl = URL.createObjectURL(pdfBlob);
-      const printWindow = window.open(pdfUrl);
+      const printWindow = window.open(pdfUrl, "_blank");
+
+      if (!printWindow) {
+        alert("Popup blocked. Please allow popups for this site.");
+        return;
+      }
 
       printWindow.onload = () => {
+        printWindow.focus();
         printWindow.print();
       };
     } catch (err) {

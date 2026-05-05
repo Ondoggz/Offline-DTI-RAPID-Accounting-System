@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import "./report.css";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,6 +29,8 @@ ChartJS.register(
 );
 
 const ReportModule = () => {
+  const API = import.meta.env.VITE_API_URL;
+
   const [reportType, setReportType] = useState("both");
   const [rangeType, setRangeType] = useState("single");
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -37,6 +41,7 @@ const ReportModule = () => {
   const [endYear, setEndYear] = useState(new Date().getFullYear());
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
 
   const months = [
@@ -66,8 +71,14 @@ const ReportModule = () => {
       return;
     }
 
+    if (!API) {
+      setError("Missing VITE_API_URL. Check your frontend .env file.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      let endpoint = `${import.meta.env.VITE_API_URL}/api/reports/`;
+      let endpoint = `${API}/api/reports/`;
       const body = { reportType };
 
       if (rangeType === "single") {
@@ -100,14 +111,69 @@ const ReportModule = () => {
       setReportData(result);
     } catch (err) {
       console.error("REPORT ERROR:", err);
-      setError(err.message || "Failed to fetch");
+      setError(err.message || "Failed to fetch report");
     } finally {
       setLoading(false);
     }
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!reportData) {
+      alert("Please generate a report first.");
+      return;
+    }
+
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  };
+
+  const exportPDF = async () => {
+    const report = document.getElementById("report-content");
+
+    if (!report) {
+      alert("Please generate a report first.");
+      return;
+    }
+
+    try {
+      setExporting(true);
+
+      const canvas = await html2canvas(report, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save("DTI-Coffee-Bean-Report.pdf");
+    } catch (err) {
+      console.error("PDF EXPORT ERROR:", err);
+      alert("Failed to export PDF.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const renderSalesChart = () => {
@@ -232,24 +298,27 @@ const ReportModule = () => {
 
   return (
     <div className="report-module">
-      <div className="report-header">
+      <div className="report-header no-print">
         <div>
           <h1>📊 Monthly Report Generation</h1>
           <p>Generate consolidated reports for coffee bean transactions</p>
         </div>
 
-        <button onClick={handlePrint} className="print-btn">
-          🖨️ Print / Save as PDF
-        </button>
+        <div className="report-actions">
+          <button onClick={handlePrint} className="print-btn">
+            🖨️ Print
+          </button>
+
+          <button onClick={exportPDF} className="print-btn" disabled={exporting}>
+            {exporting ? "Exporting..." : "📄 Export PDF"}
+          </button>
+        </div>
       </div>
 
-      <div className="report-controls">
+      <div className="report-controls no-print">
         <div className="form-group">
           <label>Report Type:</label>
-          <select
-            value={reportType}
-            onChange={(e) => setReportType(e.target.value)}
-          >
+          <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
             <option value="per-farmer">👨‍🌾 Per-Farmer Report</option>
             <option value="organization">🏢 Organization-Wide Report</option>
             <option value="both">📋 Combined Report</option>
@@ -258,10 +327,7 @@ const ReportModule = () => {
 
         <div className="form-group">
           <label>Date Range:</label>
-          <select
-            value={rangeType}
-            onChange={(e) => setRangeType(e.target.value)}
-          >
+          <select value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
             <option value="single">📅 Single Month</option>
             <option value="range">📆 Month Range</option>
           </select>
@@ -271,28 +337,18 @@ const ReportModule = () => {
           <>
             <div className="form-group">
               <label>Month:</label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-              >
+              <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
                 {months.map((m, idx) => (
-                  <option key={m} value={idx + 1}>
-                    {m}
-                  </option>
+                  <option key={m} value={idx + 1}>{m}</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
               <label>Year:</label>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-              >
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
                 {years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
+                  <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>
@@ -301,72 +357,48 @@ const ReportModule = () => {
           <>
             <div className="form-group">
               <label>Start Month:</label>
-              <select
-                value={startMonth}
-                onChange={(e) => setStartMonth(Number(e.target.value))}
-              >
+              <select value={startMonth} onChange={(e) => setStartMonth(Number(e.target.value))}>
                 {months.map((m, idx) => (
-                  <option key={m} value={idx + 1}>
-                    {m}
-                  </option>
+                  <option key={m} value={idx + 1}>{m}</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
               <label>Start Year:</label>
-              <select
-                value={startYear}
-                onChange={(e) => setStartYear(Number(e.target.value))}
-              >
+              <select value={startYear} onChange={(e) => setStartYear(Number(e.target.value))}>
                 {years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
+                  <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
               <label>End Month:</label>
-              <select
-                value={endMonth}
-                onChange={(e) => setEndMonth(Number(e.target.value))}
-              >
+              <select value={endMonth} onChange={(e) => setEndMonth(Number(e.target.value))}>
                 {months.map((m, idx) => (
-                  <option key={m} value={idx + 1}>
-                    {m}
-                  </option>
+                  <option key={m} value={idx + 1}>{m}</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
               <label>End Year:</label>
-              <select
-                value={endYear}
-                onChange={(e) => setEndYear(Number(e.target.value))}
-              >
+              <select value={endYear} onChange={(e) => setEndYear(Number(e.target.value))}>
                 {years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
+                  <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>
           </>
         )}
 
-        <button
-          onClick={generateReport}
-          disabled={loading}
-          className="generate-btn"
-        >
+        <button onClick={generateReport} disabled={loading} className="generate-btn">
           {loading ? "⏳ Generating..." : "🚀 Generate Report"}
         </button>
       </div>
 
-      {error && <div className="error-message">⚠️ {error}</div>}
+      {error && <div className="error-message no-print">⚠️ {error}</div>}
 
       {reportData && (
         <div className="report-content" id="report-content">
@@ -375,9 +407,7 @@ const ReportModule = () => {
             <p>
               {rangeType === "single"
                 ? `${months[month - 1]} ${year}`
-                : `${months[startMonth - 1]} ${startYear} - ${
-                    months[endMonth - 1]
-                  } ${endYear}`}
+                : `${months[startMonth - 1]} ${startYear} - ${months[endMonth - 1]} ${endYear}`}
             </p>
             <p className="generated-date">
               Generated on: {new Date().toLocaleString()}
@@ -403,22 +433,13 @@ const ReportModule = () => {
 
                   <div className="card">
                     <h4>Volume Sold</h4>
-                    <p>
-                      {(
-                        reportData.data.organization.totalVolumeSold || 0
-                      ).toFixed(2)}{" "}
-                      kg
-                    </p>
+                    <p>{(reportData.data.organization.totalVolumeSold || 0).toFixed(2)} kg</p>
                     <small>coffee beans</small>
                   </div>
 
                   <div className="card">
                     <h4>Sales Generated</h4>
-                    <p>
-                      {formatCurrency(
-                        reportData.data.organization.totalSalesGenerated
-                      )}
-                    </p>
+                    <p>{formatCurrency(reportData.data.organization.totalSalesGenerated)}</p>
                     <small>total revenue</small>
                   </div>
 
@@ -432,8 +453,7 @@ const ReportModule = () => {
 
               {rangeType === "single" &&
                 reportData.data.organization?.beanTypeSummary &&
-                Object.keys(reportData.data.organization.beanTypeSummary)
-                  .length > 0 && (
+                Object.keys(reportData.data.organization.beanTypeSummary).length > 0 && (
                   <div className="bean-breakdown">
                     <h4>Bean Type Breakdown</h4>
 
@@ -447,17 +467,15 @@ const ReportModule = () => {
                       </thead>
 
                       <tbody>
-                        {Object.entries(
-                          reportData.data.organization.beanTypeSummary
-                        ).map(([beanType, data]) => (
-                          <tr key={beanType}>
-                            <td>
-                              <strong>{beanType}</strong>
-                            </td>
-                            <td>{(data.volumeSold || 0).toFixed(2)}</td>
-                            <td>{formatCurrency(data.salesGenerated)}</td>
-                          </tr>
-                        ))}
+                        {Object.entries(reportData.data.organization.beanTypeSummary).map(
+                          ([beanType, data]) => (
+                            <tr key={beanType}>
+                              <td><strong>{beanType}</strong></td>
+                              <td>{(data.volumeSold || 0).toFixed(2)}</td>
+                              <td>{formatCurrency(data.salesGenerated)}</td>
+                            </tr>
+                          )
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -484,24 +502,10 @@ const ReportModule = () => {
                   <tbody>
                     {reportData.data.map((monthData, idx) => (
                       <tr key={idx}>
-                        <td>
-                          <strong>
-                            {monthData.monthName} {monthData.year}
-                          </strong>
-                        </td>
-                        <td>
-                          {monthData.organization?.totalDeliveries || 0}
-                        </td>
-                        <td>
-                          {(
-                            monthData.organization?.totalVolumeSold || 0
-                          ).toFixed(2)}
-                        </td>
-                        <td>
-                          {formatCurrency(
-                            monthData.organization?.totalSalesGenerated
-                          )}
-                        </td>
+                        <td><strong>{monthData.monthName} {monthData.year}</strong></td>
+                        <td>{monthData.organization?.totalDeliveries || 0}</td>
+                        <td>{(monthData.organization?.totalVolumeSold || 0).toFixed(2)}</td>
+                        <td>{formatCurrency(monthData.organization?.totalSalesGenerated)}</td>
                         <td>{monthData.organization?.uniqueFarmers || 0}</td>
                       </tr>
                     ))}
@@ -535,32 +539,23 @@ const ReportModule = () => {
                       {reportData.data.perFarmer.map((farmer, idx) => (
                         <tr key={idx}>
                           <td>{farmer.farmerId}</td>
-                          <td>
-                            <strong>{farmer.farmerName}</strong>
-                          </td>
+                          <td><strong>{farmer.farmerName}</strong></td>
                           <td>{farmer.farmerAddress || "-"}</td>
                           <td>{farmer.contactNumber || "-"}</td>
                           <td>{farmer.deliveries || 0}</td>
                           <td>{(farmer.volumeSold || 0).toFixed(2)}</td>
-                          <td className="sales-amount">
-                            {formatCurrency(farmer.salesGenerated)}
-                          </td>
+                          <td className="sales-amount">{formatCurrency(farmer.salesGenerated)}</td>
                         </tr>
                       ))}
                     </tbody>
 
                     <tfoot>
                       <tr className="total-row">
-                        <td colSpan="5">
-                          <strong>Total</strong>
-                        </td>
+                        <td colSpan="5"><strong>Total</strong></td>
                         <td>
                           <strong>
                             {reportData.data.perFarmer
-                              .reduce(
-                                (sum, f) => sum + (f.volumeSold || 0),
-                                0
-                              )
+                              .reduce((sum, f) => sum + (f.volumeSold || 0), 0)
                               .toFixed(2)}
                           </strong>
                         </td>

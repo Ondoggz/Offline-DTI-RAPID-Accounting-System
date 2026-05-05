@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 function FarmerManagement({ beans = [] }) {
+  const API = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
+
   const [farmers, setFarmers] = useState([]);
 
   const [form, setForm] = useState({
@@ -16,47 +19,37 @@ function FarmerManagement({ beans = [] }) {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const token = localStorage.getItem("token");
 
-  /* =========================
-     FETCH FARMERS (FIXED)
-  ========================= */
+  const authHeaders = {
+    headers: { Authorization: `Bearer ${token}` },
+  };
+
   const fetchFarmers = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/farmers", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(`${API}/api/farmers`, authHeaders);
 
       setFarmers(
         res.data.map((f) => ({
           id: f._id,
-
-          // 🟢 HANDLE DIFFERENT BACKEND FIELD NAMES
           farmerID: f.farmerID || f.farmerId || f.idNumber || "",
           name: f.name || f.farmerName || "",
           age: f.age || "",
           address: f.address || "",
-
-          contactNumber:
-            f.contactNumber || f.contact || f.phoneNumber || "",
-
+          contactNumber: f.contactNumber || f.contact || f.phoneNumber || "",
           emailAddress: f.emailAddress || f.email || "",
-
           beans: f.beans || [],
         }))
       );
     } catch (err) {
-      console.error(err);
+      console.error("FETCH FARMERS ERROR:", err);
+      alert(err.response?.data?.message || "Failed to fetch farmers.");
     }
   };
 
   useEffect(() => {
-    fetchFarmers();
-  }, []);
+    if (API && token) fetchFarmers();
+  }, [API, token]);
 
-  /* =========================
-     FORM HANDLING
-  ========================= */
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -93,9 +86,6 @@ function FarmerManagement({ beans = [] }) {
     setIsEditing(false);
   };
 
-  /* =========================
-     SUBMIT (CREATE / UPDATE)
-  ========================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -126,29 +116,19 @@ function FarmerManagement({ beans = [] }) {
 
     try {
       if (isEditing) {
-        await axios.put(
-          `http://localhost:3000/api/farmers/${form.id}`,
-          farmerData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.put(`${API}/api/farmers/${form.id}`, farmerData, authHeaders);
       } else {
-        await axios.post(
-          "http://localhost:3000/api/farmers",
-          farmerData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await axios.post(`${API}/api/farmers`, farmerData, authHeaders);
       }
 
       await fetchFarmers();
       resetForm();
     } catch (err) {
-      console.error(err);
+      console.error("SAVE FARMER ERROR:", err);
+      alert(err.response?.data?.message || "Failed to save farmer.");
     }
   };
 
-  /* =========================
-     EDIT / DELETE
-  ========================= */
   const handleEdit = (farmer) => {
     setForm({
       id: farmer.id,
@@ -158,8 +138,6 @@ function FarmerManagement({ beans = [] }) {
       address: farmer.address,
       contactNumber: farmer.contactNumber,
       emailAddress: farmer.emailAddress,
-
-      // FIX: ensure IDs only
       beans: farmer.beans?.length
         ? farmer.beans.map((b) => b._id || b.id || b)
         : [""],
@@ -172,19 +150,14 @@ function FarmerManagement({ beans = [] }) {
     if (!window.confirm("Delete this farmer?")) return;
 
     try {
-      await axios.delete(`http://localhost:3000/api/farmers/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      await axios.delete(`${API}/api/farmers/${id}`, authHeaders);
       setFarmers((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
-      console.error(err);
+      console.error("DELETE FARMER ERROR:", err);
+      alert(err.response?.data?.message || "Failed to delete farmer.");
     }
   };
 
-  /* =========================
-     UI
-  ========================= */
   return (
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
@@ -223,9 +196,14 @@ function FarmerManagement({ beans = [] }) {
         <button type="submit">
           {isEditing ? "Update Farmer" : "Add Farmer"}
         </button>
+
+        {isEditing && (
+          <button type="button" onClick={resetForm}>
+            Cancel Edit
+          </button>
+        )}
       </form>
 
-      {/* TABLE */}
       <table border="1" style={{ width: "100%", marginTop: "20px" }}>
         <thead>
           <tr>
@@ -249,14 +227,11 @@ function FarmerManagement({ beans = [] }) {
               <td>{f.address || "-"}</td>
               <td>{f.contactNumber || "-"}</td>
               <td>{f.emailAddress || "-"}</td>
-
-              {/* FIXED BEANS DISPLAY */}
               <td>
                 {f.beans?.length
                   ? f.beans.map((b) => b.beanName || b.name || b).join(", ")
                   : "-"}
               </td>
-
               <td>
                 <button onClick={() => handleEdit(f)}>Edit</button>
                 <button onClick={() => handleDelete(f.id)}>Delete</button>

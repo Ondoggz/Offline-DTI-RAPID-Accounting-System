@@ -9,6 +9,7 @@ function DeliveryEntry() {
   const [beans, setBeans] = useState([]);
   const [file, setFile] = useState(null);
 
+  const API = import.meta.env.VITE_API_URL;
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -29,7 +30,7 @@ function DeliveryEntry() {
     consignee: "",
     deliveryGuyContact: "",
     consigneeContact: "",
-    recordedBy: getRecordedBy(), // ✅ FULL NAME
+    recordedBy: getRecordedBy(),
     volume: "",
   });
 
@@ -37,11 +38,13 @@ function DeliveryEntry() {
     const fetchData = async () => {
       try {
         const [dRes, fRes, bRes] = await Promise.all([
-          axios.get("http://localhost:3000/api/deliveries"),
-          axios.get("http://localhost:3000/api/farmers", {
+          axios.get(`${API}/api/deliveries`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:3000/api/beans", {
+          axios.get(`${API}/api/farmers`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`${API}/api/beans`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -54,8 +57,10 @@ function DeliveryEntry() {
       }
     };
 
-    fetchData();
-  }, [token]);
+    if (API && token) {
+      fetchData();
+    }
+  }, [API, token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,7 +100,7 @@ function DeliveryEntry() {
       consignee: "",
       deliveryGuyContact: "",
       consigneeContact: "",
-      recordedBy: getRecordedBy(), // ✅ FULL NAME RESET
+      recordedBy: getRecordedBy(),
       volume: "",
     });
 
@@ -117,23 +122,20 @@ function DeliveryEntry() {
         data.append("proofOfDelivery", file);
       }
 
-      const res = await axios.post(
-        "http://localhost:3000/api/deliveries",
-        data,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const res = await axios.post(`${API}/api/deliveries`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const savedDelivery = res.data.data || res.data;
 
       if (savedDelivery && savedDelivery._id) {
         setDeliveries((prev) => [savedDelivery, ...prev]);
       } else {
-        const refresh = await axios.get("http://localhost:3000/api/deliveries");
+        const refresh = await axios.get(`${API}/api/deliveries`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setDeliveries(refresh.data);
       }
 
@@ -150,7 +152,7 @@ function DeliveryEntry() {
     if (!password) return;
 
     try {
-      await axios.delete(`http://localhost:3000/api/deliveries/${id}`, {
+      await axios.delete(`${API}/api/deliveries/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -208,8 +210,6 @@ function DeliveryEntry() {
 
       {showForm && (
         <div className="form-grid">
-
-          {/* Farmer */}
           <div className="form-group">
             <label>Farmer</label>
             <select name="farmer" onChange={handleChange} value={form.farmer}>
@@ -222,13 +222,11 @@ function DeliveryEntry() {
             </select>
           </div>
 
-          {/* Farmer Contact */}
           <div className="form-group">
             <label>Farmer Contact No.</label>
             <input value={form.farmerContact} readOnly />
           </div>
 
-          {/* Bean */}
           <div className="form-group">
             <label>Bean Type</label>
             <select
@@ -245,7 +243,6 @@ function DeliveryEntry() {
             </select>
           </div>
 
-          {/* Volume */}
           <div className="form-group">
             <label>Volume</label>
             <input
@@ -256,19 +253,16 @@ function DeliveryEntry() {
             />
           </div>
 
-          {/* Price */}
           <div className="form-group">
             <label>Price per Unit</label>
             <input value={pricePerUnit} readOnly />
           </div>
 
-          {/* Total */}
           <div className="form-group">
             <label>Total Amount</label>
             <input value={totalAmount} readOnly />
           </div>
 
-          {/* Other fields unchanged */}
           <div className="form-group">
             <label>Courier</label>
             <input name="courier" value={form.courier} onChange={handleChange} />
@@ -276,42 +270,60 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Date</label>
-            <input type="date" name="date" value={form.date} onChange={handleChange} />
+            <input
+              type="date"
+              name="date"
+              value={form.date}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy</label>
-            <input name="deliveryGuy" value={form.deliveryGuy} onChange={handleChange} />
+            <input
+              name="deliveryGuy"
+              value={form.deliveryGuy}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Delivery Guy Contact No.</label>
-            <input name="deliveryGuyContact" value={form.deliveryGuyContact} onChange={handleChange} />
+            <input
+              name="deliveryGuyContact"
+              value={form.deliveryGuyContact}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Consignee</label>
-            <input name="consignee" value={form.consignee} onChange={handleChange} />
+            <input
+              name="consignee"
+              value={form.consignee}
+              onChange={handleChange}
+            />
           </div>
 
           <div className="form-group">
             <label>Consignee Contact No.</label>
-            <input name="consigneeContact" value={form.consigneeContact} onChange={handleChange} />
+            <input
+              name="consigneeContact"
+              value={form.consigneeContact}
+              onChange={handleChange}
+            />
           </div>
 
-          {/* File */}
           <div className="form-group">
             <label>Proof of Delivery</label>
             <input type="file" onChange={(e) => setFile(e.target.files[0])} />
           </div>
 
-          {/* Recorded By */}
           <div className="form-group">
             <label>Recorded By</label>
             <input value={form.recordedBy} readOnly />
           </div>
 
-          {/* Actions */}
           <div className="form-actions">
             <button className="save-btn" onClick={handleSubmit}>
               Save
@@ -327,7 +339,6 @@ function DeliveryEntry() {
               Cancel
             </button>
           </div>
-
         </div>
       )}
     </div>
