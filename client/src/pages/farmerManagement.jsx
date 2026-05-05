@@ -31,7 +31,6 @@ function FarmerManagement({ beans = [] }) {
   const fetchFarmers = async () => {
     try {
       const res = await axios.get(`${API}/api/farmers`, authHeaders);
-
       const farmerList = Array.isArray(res.data) ? res.data : res.data.data || [];
 
       setFarmers(
@@ -58,33 +57,21 @@ function FarmerManagement({ beans = [] }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleBeanChange = (index, value) => {
     const updatedBeans = [...form.beans];
     updatedBeans[index] = value;
-
-    setForm((prev) => ({
-      ...prev,
-      beans: updatedBeans,
-    }));
+    setForm((prev) => ({ ...prev, beans: updatedBeans }));
   };
 
   const addBeanField = () => {
-    setForm((prev) => ({
-      ...prev,
-      beans: [...prev.beans, ""],
-    }));
+    setForm((prev) => ({ ...prev, beans: [...prev.beans, ""] }));
   };
 
   const removeBeanField = (index) => {
     const updatedBeans = form.beans.filter((_, i) => i !== index);
-
     setForm((prev) => ({
       ...prev,
       beans: updatedBeans.length ? updatedBeans : [""],
@@ -114,7 +101,6 @@ function FarmerManagement({ beans = [] }) {
     e.preventDefault();
 
     const errorMessage = validateForm();
-
     if (errorMessage) {
       alert(errorMessage);
       return;
@@ -149,11 +135,7 @@ function FarmerManagement({ beans = [] }) {
       console.error("SAVE FARMER ERROR:", err);
       console.log("BACKEND RESPONSE:", err.response?.data);
 
-      alert(
-        err.response?.data?.message ||
-          err.response?.data?.errors?.beans?.message ||
-          "Failed to save farmer."
-      );
+      alert(err.response?.data?.message || "Failed to save farmer.");
     }
   };
 
@@ -180,7 +162,6 @@ function FarmerManagement({ beans = [] }) {
 
     try {
       await axios.delete(`${API}/api/farmers/${id}`, authHeaders);
-
       setFarmers((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
       console.error("DELETE FARMER ERROR:", err.response?.data || err.message);
