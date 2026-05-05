@@ -28,14 +28,14 @@ function FarmerManagement({ beans = [] }) {
     },
   };
 
-  // ✅ helper to detect valid Mongo ObjectId
   const isMongoId = (val) => /^[0-9a-fA-F]{24}$/.test(String(val));
 
-  // ✅ normalize beans (supports both id and _id)
-  const normalizedBeans = beans.map((b) => ({
-    _id: b._id || b.id,
-    beanName: b.beanName || b.name,
-  }));
+  const normalizedBeans = beans
+    .map((b) => ({
+      _id: b._id || b.id,
+      beanName: b.beanName || b.name,
+    }))
+    .filter((b) => b._id && b.beanName);
 
   const fetchFarmers = async () => {
     try {
@@ -70,9 +70,9 @@ function FarmerManagement({ beans = [] }) {
   };
 
   const handleBeanChange = (index, value) => {
-    const updated = [...form.beans];
-    updated[index] = value;
-    setForm((prev) => ({ ...prev, beans: updated }));
+    const updatedBeans = [...form.beans];
+    updatedBeans[index] = value;
+    setForm((prev) => ({ ...prev, beans: updatedBeans }));
   };
 
   const addBeanField = () => {
@@ -80,10 +80,10 @@ function FarmerManagement({ beans = [] }) {
   };
 
   const removeBeanField = (index) => {
-    const updated = form.beans.filter((_, i) => i !== index);
+    const updatedBeans = form.beans.filter((_, i) => i !== index);
     setForm((prev) => ({
       ...prev,
-      beans: updated.length ? updated : [""],
+      beans: updatedBeans.length ? updatedBeans : [""],
     }));
   };
 
@@ -93,15 +93,18 @@ function FarmerManagement({ beans = [] }) {
   };
 
   const validateForm = () => {
-    const cleanedBeans = form.beans.filter((b) => String(b).trim() !== "");
+    const selectedBeans = form.beans.filter((b) => String(b).trim() !== "");
 
     if (!form.farmerID.trim()) return "Farmer ID is required.";
     if (!form.name.trim()) return "Name is required.";
-    if (!form.age || Number(form.age) <= 0) return "Valid age required.";
-    if (!form.address.trim()) return "Address required.";
-    if (!form.contactNumber.trim()) return "Contact required.";
-    if (!form.emailAddress.trim()) return "Email required.";
-    if (cleanedBeans.length === 0) return "Select at least one bean.";
+    if (!form.age || Number(form.age) <= 0) return "Valid age is required.";
+    if (!form.address.trim()) return "Address is required.";
+    if (!form.contactNumber.trim()) return "Contact number is required.";
+    if (!form.emailAddress.trim()) return "Email address is required.";
+    if (selectedBeans.length === 0) return "Please select at least one bean type.";
+
+    const invalidBean = selectedBeans.find((beanId) => !isMongoId(beanId));
+    if (invalidBean) return "Invalid bean selected. Please reselect the bean type.";
 
     return null;
   };
@@ -109,21 +112,15 @@ function FarmerManagement({ beans = [] }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const error = validateForm();
-    if (error) {
-      alert(error);
+    const errorMessage = validateForm();
+    if (errorMessage) {
+      alert(errorMessage);
       return;
     }
 
-    // ✅ only send valid Mongo ObjectIds
     const cleanedBeans = form.beans
       .map((b) => String(b).trim())
       .filter((b) => isMongoId(b));
-
-    if (cleanedBeans.length === 0) {
-      alert("Selected beans are invalid. Please reselect.");
-      return;
-    }
 
     const farmerData = {
       farmerID: form.farmerID.trim(),
@@ -164,7 +161,7 @@ function FarmerManagement({ beans = [] }) {
       emailAddress: farmer.emailAddress || "",
       beans:
         farmer.beans?.length > 0
-          ? farmer.beans.map((b) => b._id || "").filter(Boolean)
+          ? farmer.beans.map((b) => b._id || b.id || "").filter(Boolean)
           : [""],
     });
 
@@ -178,8 +175,8 @@ function FarmerManagement({ beans = [] }) {
       await axios.delete(`${API}/api/farmers/${id}`, authHeaders);
       setFarmers((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
-      console.error("DELETE ERROR:", err);
-      alert(err.response?.data?.message || "Delete failed.");
+      console.error("DELETE FARMER ERROR:", err.response?.data || err.message);
+      alert(err.response?.data?.message || "Failed to delete farmer.");
     }
   };
 
@@ -189,11 +186,11 @@ function FarmerManagement({ beans = [] }) {
 
       <form onSubmit={handleSubmit}>
         <input name="farmerID" placeholder="Farmer ID" value={form.farmerID} onChange={handleChange} />
-        <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
+        <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} />
         <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} />
         <input name="address" placeholder="Address" value={form.address} onChange={handleChange} />
-        <input name="contactNumber" placeholder="Contact" value={form.contactNumber} onChange={handleChange} />
-        <input name="emailAddress" placeholder="Email" value={form.emailAddress} onChange={handleChange} />
+        <input name="contactNumber" placeholder="Contact Number" value={form.contactNumber} onChange={handleChange} />
+        <input name="emailAddress" type="email" placeholder="Email Address" value={form.emailAddress} onChange={handleChange} />
 
         <div>
           <p>Bean Types</p>
@@ -201,7 +198,7 @@ function FarmerManagement({ beans = [] }) {
           {form.beans.map((bean, i) => (
             <div key={i}>
               <select value={bean} onChange={(e) => handleBeanChange(i, e.target.value)}>
-                <option value="">Select bean</option>
+                <option value="">Select bean type</option>
 
                 {normalizedBeans.map((b) => (
                   <option key={b._id} value={b._id}>
@@ -219,27 +216,46 @@ function FarmerManagement({ beans = [] }) {
           ))}
         </div>
 
-        <button type="submit">{isEditing ? "Update" : "Add Farmer"}</button>
+        <button type="submit">{isEditing ? "Update Farmer" : "Add Farmer"}</button>
+
+        {isEditing && (
+          <button type="button" onClick={resetForm}>
+            Cancel Edit
+          </button>
+        )}
       </form>
 
       <table border="1" style={{ marginTop: "20px", width: "100%" }}>
         <thead>
           <tr>
-            <th>ID</th><th>Name</th><th>Beans</th><th>Actions</th>
+            <th>Farmer ID</th>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Address</th>
+            <th>Contact</th>
+            <th>Email</th>
+            <th>Beans</th>
+            <th>Actions</th>
           </tr>
         </thead>
 
         <tbody>
           {farmers.map((f) => (
             <tr key={f.id}>
-              <td>{f.farmerID}</td>
-              <td>{f.name}</td>
+              <td>{f.farmerID || "-"}</td>
+              <td>{f.name || "-"}</td>
+              <td>{f.age || "-"}</td>
+              <td>{f.address || "-"}</td>
+              <td>{f.contactNumber || "-"}</td>
+              <td>{f.emailAddress || "-"}</td>
               <td>
-                {f.beans?.map((b) => b.beanName || b.name).join(", ")}
+                {f.beans?.length
+                  ? f.beans.map((b) => b.beanName || b.name || "").filter(Boolean).join(", ")
+                  : "-"}
               </td>
               <td>
-                <button onClick={() => handleEdit(f)}>Edit</button>
-                <button onClick={() => handleDelete(f.id)}>Delete</button>
+                <button type="button" onClick={() => handleEdit(f)}>Edit</button>
+                <button type="button" onClick={() => handleDelete(f.id)}>Delete</button>
               </td>
             </tr>
           ))}
