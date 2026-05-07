@@ -20,12 +20,13 @@ router.post("/print", async (req, res) => {
       });
     }
 
-    if (!fs.existsSync("temp")) {
-      fs.mkdirSync("temp");
+    const tempDir = path.resolve("temp");
+
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
     }
 
     const content = fs.readFileSync(templatePath, "binary");
-
     const zip = new PizZip(content);
 
     const doc = new Docxtemplater(zip, {
@@ -35,8 +36,8 @@ router.post("/print", async (req, res) => {
 
     doc.render(data);
 
-    const outputDocx = path.resolve("temp/output.docx");
-    const outputPdf = path.resolve("temp/output.pdf");
+    const outputDocx = path.join(tempDir, "output.docx");
+    const outputPdf = path.join(tempDir, "output.pdf");
 
     fs.writeFileSync(
       outputDocx,
@@ -44,16 +45,20 @@ router.post("/print", async (req, res) => {
     );
 
     exec(
-      `libreoffice --headless --convert-to pdf "${outputDocx}" --outdir temp`,
-      (err) => {
+      `libreoffice --headless --convert-to pdf "${outputDocx}" --outdir "${tempDir}"`,
+      (err, stdout, stderr) => {
+        console.log("LibreOffice stdout:", stdout);
+        console.error("LibreOffice stderr:", stderr);
+
         if (err) {
-          console.error(err);
+          console.error("Conversion error:", err);
           return res.status(500).send("PDF conversion failed");
         }
 
         if (!fs.existsSync(outputPdf)) {
           return res.status(500).json({
             message: "PDF was not generated",
+            expectedPath: outputPdf,
           });
         }
 
@@ -68,7 +73,7 @@ router.post("/print", async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err);
+    console.error("Server error:", err);
     res.status(500).send("Error generating document");
   }
 });
