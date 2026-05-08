@@ -241,3 +241,180 @@ code {
   padding: 4px 8px;
   cursor: pointer;
 }
+
+/* ========================================
+   GLOBAL FORM STYLING
+======================================== */
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--text-h);
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+/* ========================================
+   DARK MODE DROPDOWN FIX
+======================================== */
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-color: var(--bg);
+  color: var(--text-h);
+}
+
+select option {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* DARK MODE OPTION FIX */
+@media (prefers-color-scheme: dark) {
+  select option {
+    background-color: #1f2937;
+    color: #ffffff;
+  }
+}
+
+/* ========================================
+   BUTTON STYLING
+======================================== */
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+/* ========================================
+   TABLE IMPROVEMENTS
+======================================== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 12px;
+  text-align: left;
+}
+
+tr:nth-child(even) {
+  background: rgba(128, 128, 128, 0.05);
+}
+
+/* ========================================
+   LOGO STYLING
+======================================== */
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.main-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.system-name {
+  margin: 0;
+  font-size: 20px;
+}
+
+.system-subtitle {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* ========================================
+   LOGIN LOGO
+======================================== */
+
+.login-logo-section {
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.login-logo {
+  width: 400px;
+  height: 400px;
+  object-fit: contain;
+  margin-bottom: 10px;
+}
+
+/* ========================================
+   MODULE CARD IMPROVEMENTS
+======================================== */
+
+.module-card {
+  backdrop-filter: blur(10px);
+}
+
+.module-card p {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ========================================
+   RESPONSIVE FIXES
+======================================== */
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .modules {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .main {
+    padding: 20px;
+  }
+}
