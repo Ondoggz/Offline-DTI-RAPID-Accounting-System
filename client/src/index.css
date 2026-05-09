@@ -9,7 +9,8 @@
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+    rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -24,8 +25,11 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  @media (max-width: 1024px) {
+/* FIXED (moved media query OUTSIDE :root) */
+@media (max-width: 1024px) {
+  :root {
     font-size: 16px;
   }
 }
@@ -42,7 +46,8 @@
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+      rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
+      rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
 
   #social .button-icon {
@@ -52,6 +57,8 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+  background-color: #ECFDF5 !important;
 }
 
 #root {
@@ -60,10 +67,12 @@ body {
   margin: 0 auto;
   text-align: center;
   border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+
+  background-color: #ECFDF5 !important;
 }
 
 h1,
@@ -77,20 +86,28 @@ h1 {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
-  @media (max-width: 1024px) {
+}
+
+@media (max-width: 1024px) {
+  h1 {
     font-size: 36px;
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
-  @media (max-width: 1024px) {
+}
+
+@media (max-width: 1024px) {
+  h2 {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }
@@ -115,26 +132,31 @@ code {
   height: 100vh;
   background: var(--bg);
 }
+
 /* LEFT SIDE */
 .main {
   flex: 1;
   padding: 40px;
   text-align: left;
 }
+
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 40px;
 }
+
 .logo {
   font-weight: 600;
   color: var(--text-h);
 }
+
 .title {
   font-size: 20px;
   color: var(--text-h);
 }
+
 /* MODULE GRID */
 .modules {
   display: grid;
@@ -142,6 +164,7 @@ code {
   gap: 40px;
   justify-content: center;
 }
+
 .module-card {
   width: 120px;
   height: 120px;
@@ -156,20 +179,24 @@ code {
   cursor: pointer;
   transition: 0.2s;
 }
+
 .module-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow);
 }
+
 .icon {
   font-size: 22px;
 }
-/* STATUS TEXT */
+
+/* STATUS */
 .status {
   margin-top: 40px;
   font-size: 14px;
   color: var(--text);
 }
-/* RIGHT SIDEBAR */
+
+/* SIDEBAR */
 .sidebar {
   width: 280px;
   background: var(--bg);
@@ -179,6 +206,8 @@ code {
   justify-content: space-between;
   border-left: 1px solid var(--border);
 }
+
+/* INPUTS */
 .search {
   padding: 10px;
   border-radius: 8px;
@@ -187,25 +216,30 @@ code {
   background: transparent;
   color: var(--text);
 }
+
 .section {
   margin-bottom: 20px;
 }
+
 .section h4 {
   font-size: 14px;
   margin-bottom: 10px;
   color: var(--text-h);
 }
+
 .section ul {
   list-style: none;
   padding: 0;
 }
+
 .section li {
   padding: 6px 0;
   font-size: 13px;
   color: var(--text);
   cursor: pointer;
 }
-/* LOGOUT BUTTON */
+
+/* LOGOUT */
 .logout {
   background: #ff3b30;
   color: white;
@@ -215,6 +249,7 @@ code {
   cursor: pointer;
 }
 
+/* PRINT */
 @media print {
   body * {
     visibility: hidden;
@@ -233,6 +268,7 @@ code {
   }
 }
 
+/* DELETE */
 .delete-btn {
   margin-left: 10px;
   background: red;
@@ -242,10 +278,7 @@ code {
   cursor: pointer;
 }
 
-/* ========================================
-   GLOBAL FORM STYLING
-======================================== */
-
+/* FORM STYLING */
 input,
 select,
 textarea {
@@ -268,36 +301,27 @@ textarea:focus {
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
-/* ========================================
-   DARK MODE DROPDOWN FIX
-======================================== */
-
+/* SELECT FIX */
 select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-
-  background-color: var(--bg);
-  color: var(--text-h);
 }
 
+/* OPTIONS */
 select option {
   background-color: #ffffff;
-  color: #000000;
+  color: #000;
 }
 
-/* DARK MODE OPTION FIX */
 @media (prefers-color-scheme: dark) {
   select option {
     background-color: #1f2937;
-    color: #ffffff;
+    color: #fff;
   }
 }
 
-/* ========================================
-   BUTTON STYLING
-======================================== */
-
+/* BUTTONS */
 button {
   padding: 10px 16px;
   border: none;
@@ -312,10 +336,7 @@ button:hover {
   opacity: 0.95;
 }
 
-/* ========================================
-   TABLE IMPROVEMENTS
-======================================== */
-
+/* TABLE */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -340,10 +361,7 @@ tr:nth-child(even) {
   background: rgba(128, 128, 128, 0.05);
 }
 
-/* ========================================
-   LOGO STYLING
-======================================== */
-
+/* LOGO */
 .logo-container {
   display: flex;
   align-items: center;
@@ -356,20 +374,7 @@ tr:nth-child(even) {
   object-fit: contain;
 }
 
-.system-name {
-  margin: 0;
-  font-size: 20px;
-}
-
-.system-subtitle {
-  font-size: 13px;
-  opacity: 0.7;
-}
-
-/* ========================================
-   LOGIN LOGO
-======================================== */
-
+/* LOGIN */
 .login-logo-section {
   text-align: center;
   margin-bottom: 5px;
@@ -382,10 +387,7 @@ tr:nth-child(even) {
   margin-bottom: 10px;
 }
 
-/* ========================================
-   MODULE CARD IMPROVEMENTS
-======================================== */
-
+/* MODULE */
 .module-card {
   backdrop-filter: blur(10px);
 }
@@ -395,10 +397,7 @@ tr:nth-child(even) {
   font-weight: 500;
 }
 
-/* ========================================
-   RESPONSIVE FIXES
-======================================== */
-
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .app-layout {
     flex-direction: column;
@@ -419,20 +418,7 @@ tr:nth-child(even) {
   }
 }
 
-/* ========================================
-   GLOBAL BACKGROUND COLOR
-======================================== */
-
-/* Force background color on all pages */
-body {
-  background-color: #ECFDF5 !important;
-}
-
-#root {
-  background-color: #ECFDF5 !important;
-}
-
-/* Ensure all main containers inherit the background */
+/* GLOBAL BACKGROUND */
 .app-layout,
 .admin-container,
 .delivery-container,
@@ -441,7 +427,6 @@ body {
   background-color: #ECFDF5 !important;
 }
 
-/* Keep cards and modals white for readability */
 .admin-card,
 .module-card,
 .delivery-item,
@@ -451,7 +436,6 @@ body {
   background-color: #ffffff;
 }
 
-/* Smooth transition for any container without breaking existing styles */
 .main,
 .sidebar,
 .form-grid,
