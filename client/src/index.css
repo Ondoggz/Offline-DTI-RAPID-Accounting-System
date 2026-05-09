@@ -35,7 +35,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #191919;
+    --text: #ffffff;
     --text-h: #ffffff;
     --bg: #16171d;
     --border: #2e303a;
@@ -276,7 +276,6 @@ code {
   cursor: pointer;
 }
 
-/* FORM STYLING */
 input,
 select,
 textarea {
@@ -299,14 +298,12 @@ textarea:focus {
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
-/* SELECT FIX */
 select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
 }
 
-/* OPTIONS */
 select option {
   background-color: #ffffff;
   color: #000;
@@ -319,7 +316,6 @@ select option {
   }
 }
 
-/* BUTTONS */
 button {
   padding: 10px 16px;
   border: none;
