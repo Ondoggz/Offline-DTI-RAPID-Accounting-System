@@ -55,3 +55,13 @@
 .login-card button:hover {
   opacity: 0.9;
 }
+
+/* Login Page Background */
+.login-page {
+  background-color: #ECFDF5 !important;
+  min-height: 100vh;
+}
+
+.login-card {
+  background-color: #ffffff;
+}

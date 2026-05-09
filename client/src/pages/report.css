@@ -210,3 +210,19 @@
     padding: 20px !important;
   }
 }
+
+/* Report Module Background */
+.report-module {
+  background-color: #ECFDF5 !important;
+  min-height: 100vh;
+}
+
+.report-content {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.chart-card {
+  background-color: #ffffff;
+}

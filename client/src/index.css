@@ -418,3 +418,43 @@ tr:nth-child(even) {
     padding: 20px;
   }
 }
+
+/* ========================================
+   GLOBAL BACKGROUND COLOR
+======================================== */
+
+/* Force background color on all pages */
+body {
+  background-color: #ECFDF5 !important;
+}
+
+#root {
+  background-color: #ECFDF5 !important;
+}
+
+/* Ensure all main containers inherit the background */
+.app-layout,
+.admin-container,
+.delivery-container,
+.report-module,
+.login-page {
+  background-color: #ECFDF5 !important;
+}
+
+/* Keep cards and modals white for readability */
+.admin-card,
+.module-card,
+.delivery-item,
+.report-content,
+.summary-cards .card,
+.login-card {
+  background-color: #ffffff;
+}
+
+/* Smooth transition for any container without breaking existing styles */
+.main,
+.sidebar,
+.form-grid,
+.delivery-list {
+  background-color: transparent;
+}

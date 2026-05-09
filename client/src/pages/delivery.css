@@ -184,3 +184,19 @@
   padding: 4px 8px;
   cursor: pointer;
 }
+
+/* Delivery Page Background */
+.delivery-container {
+  background-color: #ECFDF5 !important;
+  min-height: 100vh;
+}
+
+.delivery-item {
+  background-color: #ffffff;
+}
+
+.form-grid {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+}
