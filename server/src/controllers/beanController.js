@@ -32,7 +32,7 @@ export const getBeans = async (req, res) => {
       beans.map(async (bean) => {
         const farmers = await Farmer.find({
           beans: bean._id,
-        }).select("name age address");
+        }).select("name sex age residentialAddress farmAddress");
 
         return {
           _id: bean._id,
