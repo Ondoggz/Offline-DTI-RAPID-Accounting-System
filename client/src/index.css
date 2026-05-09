@@ -1,34 +1,39 @@
+/* ========================================
+   RESET
+======================================== */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ========================================
+   ROOT THEME VARIABLES
+======================================== */
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
-  --bg: #fff;
+  --bg: #ffffff;
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+            rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
+
+/* ========================================
+   DARK MODE
+======================================== */
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -41,31 +46,33 @@
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
     --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px,
+              rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
 }
 
+/* ========================================
+   GLOBAL BODY + ROOT FIX (IMPORTANT)
+======================================== */
+
 body {
-  margin: 0;
-  background: 100%;
+  background-color: #ECFDF5;
+  color: var(--text);
+  font-family: var(--sans);
 }
 
 #root {
+  min-height: 100vh;
   width: 100%;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
   display: flex;
   flex-direction: column;
+  background-color: #ECFDF5;
   box-sizing: border-box;
 }
+
+/* ========================================
+   TYPOGRAPHY
+======================================== */
 
 h1,
 h2 {
@@ -76,145 +83,147 @@ h2 {
 
 h1 {
   font-size: 56px;
-  letter-spacing: -1.68px;
   margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
 }
+
 h2 {
   font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  margin-bottom: 8px;
 }
+
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
+/* ========================================
+   INPUTS
+======================================== */
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--text-h);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+/* ========================================
+   SELECT FIX
+======================================== */
+
+select {
+  appearance: none;
+}
+
+select option {
+  background: #fff;
+  color: #000;
+}
+
+@media (prefers-color-scheme: dark) {
+  select option {
+    background: #1f2937;
+    color: #fff;
+  }
+}
+
+/* ========================================
+   BUTTONS
+======================================== */
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+/* ========================================
+   TABLE
+======================================== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background: var(--accent-bg);
   color: var(--text-h);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+tr:nth-child(even) {
+  background: rgba(128, 128, 128, 0.05);
 }
+
+/* ========================================
+   LAYOUT FIX
+======================================== */
 
 .app-layout {
   display: flex;
-  height: 100vh;
-  background: var(--bg);
+  min-height: 100vh;
+  background: #ECFDF5;
 }
-/* LEFT SIDE */
+
 .main {
   flex: 1;
   padding: 40px;
-  text-align: left;
 }
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
-}
-.logo {
-  font-weight: 600;
-  color: var(--text-h);
-}
-.title {
-  font-size: 20px;
-  color: var(--text-h);
-}
-/* MODULE GRID */
-.modules {
-  display: grid;
-  grid-template-columns: repeat(3, 120px);
-  gap: 40px;
-  justify-content: center;
-}
-.module-card {
-  width: 120px;
-  height: 120px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-.module-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow);
-}
-.icon {
-  font-size: 22px;
-}
-/* STATUS TEXT */
-.status {
-  margin-top: 40px;
-  font-size: 14px;
-  color: var(--text);
-}
-/* RIGHT SIDEBAR */
+
 .sidebar {
   width: 280px;
-  background: var(--bg);
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   border-left: 1px solid var(--border);
+  background: var(--bg);
 }
-.search {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  margin-bottom: 20px;
-  background: transparent;
-  color: var(--text);
+
+/* ========================================
+   CARDS
+======================================== */
+
+.admin-card,
+.module-card,
+.delivery-item,
+.login-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
 }
-.section {
-  margin-bottom: 20px;
-}
-.section h4 {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: var(--text-h);
-}
-.section ul {
-  list-style: none;
-  padding: 0;
-}
-.section li {
-  padding: 6px 0;
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-}
-/* LOGOUT BUTTON */
-.logout {
-  background: #ff3b30;
-  color: white;
-  border: none;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
-}
+
+/* ========================================
+   PRINT
+======================================== */
 
 @media print {
   body * {
@@ -231,5 +240,25 @@ code {
     left: 0;
     top: 0;
     width: 100%;
+  }
+}
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .main {
+    padding: 20px;
   }
 }
