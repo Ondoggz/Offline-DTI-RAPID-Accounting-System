@@ -288,7 +288,7 @@ function FarmerManagement() {
         <thead>
           <tr>
             <th>ID</th><th>Name</th><th>Sex</th><th>Age</th>
-            <th>Home</th><th>Farm</th><th>Contact</th><th>Email</th><th>Beans</th><th>Actions</th>
+            <th>Residential Address</th><th>Farm Address</th><th>Contact</th><th>Email</th><th>Beans</th><th>Actions</th>
           </tr>
         </thead>
 
