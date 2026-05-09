@@ -156,7 +156,12 @@ function FormsGeneration() {
   const buildDocData = () => ({
     idNumber: selectedFarmer?.farmerID || "",
     name: selectedFarmer?.name || "",
-    address: selectedFarmer?.address || "",
+    sex: selectedFarmer?.sex || "",
+    age: selectedFarmer?.age || "",
+
+    homeAddress: selectedFarmer?.homeAddress || "",
+    farmAddress: selectedFarmer?.farmAddress || "",
+
     contactNumber: selectedFarmer?.contactNumber || "",
     emailAddress: selectedFarmer?.emailAddress || "",
 
@@ -183,6 +188,7 @@ function FormsGeneration() {
       const content = await response.arrayBuffer();
 
       const zip = new PizZip(content);
+
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
@@ -215,7 +221,9 @@ function FormsGeneration() {
         buildDocData(),
         {
           responseType: "blob",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -240,7 +248,7 @@ function FormsGeneration() {
     <div style={{ padding: "20px" }}>
       <h2>Forms Generation</h2>
 
-      {/* FORM */}
+      {/* FARMER DETAILS */}
       <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
         <select
           name="farmerId"
@@ -248,12 +256,62 @@ function FormsGeneration() {
           onChange={handleFormChange}
         >
           <option value="">Select Farmer</option>
+
           {farmers.map((f) => (
             <option key={f._id} value={f._id}>
               {f.name}
             </option>
           ))}
         </select>
+
+        {selectedFarmer && (
+          <div
+            style={{
+              border: "1px solid #ccc",
+              padding: "15px",
+              borderRadius: "8px",
+              background: "#f9f9f9",
+            }}
+          >
+            <h4>Farmer Information</h4>
+
+            <p>
+              <strong>ID:</strong> {selectedFarmer.farmerID}
+            </p>
+
+            <p>
+              <strong>Name:</strong> {selectedFarmer.name}
+            </p>
+
+            <p>
+              <strong>Sex:</strong> {selectedFarmer.sex}
+            </p>
+
+            <p>
+              <strong>Age:</strong> {selectedFarmer.age}
+            </p>
+
+            <p>
+              <strong>Home Address:</strong>{" "}
+              {selectedFarmer.homeAddress}
+            </p>
+
+            <p>
+              <strong>Farm Address:</strong>{" "}
+              {selectedFarmer.farmAddress}
+            </p>
+
+            <p>
+              <strong>Contact:</strong>{" "}
+              {selectedFarmer.contactNumber}
+            </p>
+
+            <p>
+              <strong>Email:</strong>{" "}
+              {selectedFarmer.emailAddress}
+            </p>
+          </div>
+        )}
 
         <input
           type="datetime-local"
@@ -307,20 +365,34 @@ function FormsGeneration() {
         const total = unitCost * (row.volume || 0);
 
         return (
-          <div key={i} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px" }}>
+          <div
+            key={i}
+            style={{
+              border: "1px solid #ccc",
+              padding: "10px",
+              marginBottom: "10px",
+              display: "grid",
+              gap: "10px",
+            }}
+          >
             <strong>Row {i + 1}</strong>
 
             <input
               placeholder="AR No"
               value={row.arNo}
-              onChange={(e) => handleRowChange(i, "arNo", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "arNo", e.target.value)
+              }
             />
 
             <select
               value={row.beanId}
-              onChange={(e) => handleRowChange(i, "beanId", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "beanId", e.target.value)
+              }
             >
               <option value="">Select Bean</option>
+
               {beans.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -328,39 +400,66 @@ function FormsGeneration() {
               ))}
             </select>
 
-            <input value={unitCost} readOnly />
+            <input
+              value={unitCost}
+              readOnly
+              placeholder="Unit Cost"
+            />
+
             <input
               type="number"
               placeholder="Volume"
               value={row.volume}
-              onChange={(e) => handleRowChange(i, "volume", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "volume", e.target.value)
+              }
             />
 
-            <input value={total} readOnly />
+            <input
+              value={total}
+              readOnly
+              placeholder="Total Amount"
+            />
 
             <input
               type="datetime-local"
               value={row.paymentDT}
-              onChange={(e) => handleRowChange(i, "paymentDT", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "paymentDT", e.target.value)
+              }
             />
 
             <input
               placeholder="Remarks"
               value={row.remarks2}
-              onChange={(e) => handleRowChange(i, "remarks2", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "remarks2", e.target.value)
+              }
             />
 
-            <button onClick={() => removeRow(i)}>Remove</button>
+            <button onClick={() => removeRow(i)}>
+              Remove
+            </button>
           </div>
         );
       })}
 
       <button onClick={addRow}>+ Add Row</button>
 
-      {/* ACTIONS */}
+      {/* TOTAL */}
       <div style={{ marginTop: "20px" }}>
-        <button onClick={exportDocx}>Export DOCX</button>
-        <button onClick={printTemplate}>Print</button>
+        <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
+      </div>
+
+      {/* ACTIONS */}
+      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+        <button onClick={exportDocx}>
+          Export DOCX
+        </button>
+
+        <button onClick={printTemplate}>
+          Print
+        </button>
       </div>
     </div>
   );
