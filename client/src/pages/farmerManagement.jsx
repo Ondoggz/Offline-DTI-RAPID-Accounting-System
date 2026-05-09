@@ -3,12 +3,7 @@ import axios from "axios";
 
 function FarmerManagement() {
   const API = import.meta.env.VITE_API_URL;
-
-  const rawToken = localStorage.getItem("token");
-  const token =
-    rawToken && rawToken.startsWith('"')
-      ? JSON.parse(rawToken)
-      : rawToken;
+  const token = localStorage.getItem("token");
 
   const [farmers, setFarmers] = useState([]);
   const [beans, setBeans] = useState([]);
@@ -20,7 +15,7 @@ function FarmerManagement() {
     name: "",
     sex: "",
     age: "",
-    homeAddress: "",
+    residentialAddress: "",
     farmAddress: "",
     contactNumber: "",
     emailAddress: "",
@@ -31,7 +26,7 @@ function FarmerManagement() {
 
   const authHeaders = {
     headers: {
-      Authorization: token ? `Bearer ${token}` : "",
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
   };
@@ -40,7 +35,7 @@ function FarmerManagement() {
     /^[0-9a-fA-F]{24}$/.test(String(val));
 
   /* =========================
-     FETCH DATA
+     FETCH DATA (FARMERS + BEANS)
   ========================= */
   const fetchData = async () => {
     try {
@@ -60,7 +55,7 @@ function FarmerManagement() {
           name: f.name || "",
           sex: f.sex || "",
           age: f.age || "",
-          homeAddress: f.homeAddress || "",
+          residentialAddress: f.residentialAddress || "",
           farmAddress: f.farmAddress || "",
           contactNumber: f.contactNumber || "",
           emailAddress: f.emailAddress || "",
@@ -70,8 +65,8 @@ function FarmerManagement() {
 
       setBeans(beansRes.data || []);
     } catch (err) {
-      console.error("FETCH ERROR:", err.response?.data || err.message);
-      alert("Failed to load data (check auth/token)");
+      console.error("FETCH ERROR:", err);
+      alert("Failed to load data.");
     }
   };
 
@@ -87,9 +82,10 @@ function FarmerManagement() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleBeanChange = (i, value) => {
+  const handleBeanChange = (index, value) => {
     const updated = [...form.beans];
-    updated[i] = value;
+    updated[index] = value;
+
     setForm((prev) => ({ ...prev, beans: updated }));
   };
 
@@ -100,8 +96,9 @@ function FarmerManagement() {
     }));
   };
 
-  const removeBeanField = (i) => {
-    const updated = form.beans.filter((_, idx) => idx !== i);
+  const removeBeanField = (index) => {
+    const updated = form.beans.filter((_, i) => i !== index);
+
     setForm((prev) => ({
       ...prev,
       beans: updated.length ? updated : [""],
@@ -117,17 +114,19 @@ function FarmerManagement() {
      VALIDATION
   ========================= */
   const validateForm = () => {
-    const selectedBeans = form.beans.filter((b) => b.trim());
+    const selectedBeans = form.beans.filter(
+      (b) => String(b).trim() !== ""
+    );
 
     if (!form.farmerID.trim()) return "Farmer ID required";
     if (!form.name.trim()) return "Name required";
     if (!form.sex.trim()) return "Sex required";
     if (!form.age || Number(form.age) <= 0) return "Valid age required";
-    if (!form.homeAddress.trim()) return "Home address required";
+    if (!form.residentialAddress.trim()) return "Residential address required";
     if (!form.farmAddress.trim()) return "Farm address required";
     if (!form.contactNumber.trim()) return "Contact required";
     if (!form.emailAddress.trim()) return "Email required";
-    if (!selectedBeans.length) return "Select at least 1 bean";
+    if (selectedBeans.length === 0) return "Select at least 1 bean";
 
     return null;
   };
@@ -141,14 +140,16 @@ function FarmerManagement() {
     const error = validateForm();
     if (error) return alert(error);
 
-    const cleanedBeans = form.beans.filter((b) => isMongoId(b));
+    const cleanedBeans = form.beans
+      .map((b) => String(b).trim())
+      .filter((b) => isMongoId(b));
 
     const payload = {
       farmerID: form.farmerID,
       name: form.name,
       sex: form.sex,
       age: Number(form.age),
-      homeAddress: form.homeAddress,
+      residentialAddress: form.residentialAddress,
       farmAddress: form.farmAddress,
       contactNumber: form.contactNumber,
       emailAddress: form.emailAddress,
@@ -173,8 +174,8 @@ function FarmerManagement() {
       await fetchData();
       resetForm();
     } catch (err) {
-      console.error(err.response?.data || err);
-      alert("Save failed (check backend auth/logs)");
+      console.error(err);
+      alert("Save failed");
     }
   };
 
@@ -188,14 +189,14 @@ function FarmerManagement() {
       name: f.name || "",
       sex: f.sex || "",
       age: f.age || "",
-      homeAddress: f.homeAddress || "",
+      residentialAddress: f.residentialAddress || "",
       farmAddress: f.farmAddress || "",
       contactNumber: f.contactNumber || "",
       emailAddress: f.emailAddress || "",
-
-      beans: Array.isArray(f.beans)
-        ? f.beans.map((b) => (typeof b === "string" ? b : b._id))
-        : [""],
+      beans:
+        f.beans?.length
+          ? f.beans.map((b) => b._id || "")
+          : [""],
     });
 
     setIsEditing(true);
@@ -208,8 +209,14 @@ function FarmerManagement() {
     if (!confirm("Delete farmer?")) return;
 
     try {
-      await axios.delete(`${API}/api/farmers/${id}`, authHeaders);
-      setFarmers((prev) => prev.filter((f) => f.id !== id));
+      await axios.delete(
+        `${API}/api/farmers/${id}`,
+        authHeaders
+      );
+
+      setFarmers((prev) =>
+        prev.filter((f) => f.id !== id)
+      );
     } catch (err) {
       console.error(err);
       alert("Delete failed");
@@ -223,6 +230,7 @@ function FarmerManagement() {
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
 
+      {/* FORM */}
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "10px", maxWidth: "700px" }}>
         <input name="farmerID" placeholder="Farmer ID" value={form.farmerID} onChange={handleChange} />
         <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
@@ -233,19 +241,24 @@ function FarmerManagement() {
           <option value="Female">Female</option>
         </select>
 
-        <input name="age" type="number" value={form.age} onChange={handleChange} />
-        <input name="homeAddress" value={form.homeAddress} onChange={handleChange} />
-        <input name="farmAddress" value={form.farmAddress} onChange={handleChange} />
-        <input name="contactNumber" value={form.contactNumber} onChange={handleChange} />
-        <input name="emailAddress" value={form.emailAddress} onChange={handleChange} />
+        <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} />
 
-        {/* BEANS */}
+        <input name="residentialAddress" placeholder="Residential Address" value={form.residentialAddress} onChange={handleChange} />
+        <input name="farmAddress" placeholder="Farm Address" value={form.farmAddress} onChange={handleChange} />
+
+        <input name="contactNumber" placeholder="Contact" value={form.contactNumber} onChange={handleChange} />
+        <input name="emailAddress" placeholder="Email" value={form.emailAddress} onChange={handleChange} />
+
+        {/* BEANS DROPDOWN */}
         <div>
           <p>Beans</p>
 
           {form.beans.map((bean, i) => (
             <div key={i} style={{ display: "flex", gap: "10px" }}>
-              <select value={bean} onChange={(e) => handleBeanChange(i, e.target.value)}>
+              <select
+                value={bean}
+                onChange={(e) => handleBeanChange(i, e.target.value)}
+              >
                 <option value="">Select bean</option>
                 {beans.map((b) => (
                   <option key={b._id} value={b._id}>
@@ -265,7 +278,9 @@ function FarmerManagement() {
           ))}
         </div>
 
-        <button type="submit">{isEditing ? "Update" : "Add"}</button>
+        <button type="submit">
+          {isEditing ? "Update" : "Add"}
+        </button>
       </form>
 
       {/* TABLE */}
@@ -284,14 +299,12 @@ function FarmerManagement() {
               <td>{f.name}</td>
               <td>{f.sex}</td>
               <td>{f.age}</td>
-              <td>{f.homeAddress}</td>
+              <td>{f.residentialAddress}</td>
               <td>{f.farmAddress}</td>
               <td>{f.contactNumber}</td>
               <td>{f.emailAddress}</td>
               <td>
-                {f.beans?.map((b) =>
-                  typeof b === "string" ? b : b.beanName
-                ).join(", ")}
+                {f.beans?.map((b) => b.beanName).join(", ")}
               </td>
               <td>
                 <button onClick={() => handleEdit(f)}>Edit</button>
