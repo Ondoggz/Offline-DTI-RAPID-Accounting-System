@@ -20,13 +20,33 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
 
-  const [beans, setBeans] = useState([
-    { id: 1, name: "Arabica", pricePerUnit: 180, unit: "kg", farmers: [] },
-    { id: 2, name: "Robusta", pricePerUnit: 150, unit: "kg", farmers: [] },
-    { id: 3, name: "Excelsa", pricePerUnit: 170, unit: "kg", farmers: [] },
-  ]);
+  // ✅ FIX: beans now come from backend
+  const [beans, setBeans] = useState([]);
 
   const timeoutRef = useRef(null);
+
+  const API = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
+
+  const authHeaders = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  /* =========================
+     FETCH BEANS FROM BACKEND
+  ========================= */
+  const fetchBeans = async () => {
+    try {
+      const res = await fetch(`${API}/api/beans`, authHeaders);
+      const data = await res.json();
+
+      setBeans(data || []);
+    } catch (err) {
+      console.error("FETCH BEANS ERROR:", err);
+    }
+  };
 
   const clearSession = () => {
     localStorage.removeItem("token");
@@ -60,9 +80,7 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(
-              `${import.meta.env.VITE_API_URL}/auth/me`
-            );
+            const res = await authFetch(`${API}/auth/me`);
 
             if (!res.ok) {
               clearSession();
@@ -73,6 +91,7 @@ function App() {
 
               const remaining =
                 SESSION_TIMEOUT - (now - Number(lastActivity));
+
               timeoutRef.current = setTimeout(clearSession, remaining);
             }
           } catch {
@@ -82,13 +101,16 @@ function App() {
       }
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api`);
+        const res = await fetch(`${API}/api`);
         const data = await res.json();
         setMessage(data.message);
         setDbTime(data.databaseTime);
       } catch {
         setMessage("Failed to connect to backend");
       }
+
+      // ✅ FIX: load beans on startup
+      fetchBeans();
     };
 
     initializeApp();
@@ -104,7 +126,9 @@ function App() {
     events.forEach((e) => window.addEventListener(e, handleActivity));
 
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      events.forEach((e) =>
+        window.removeEventListener(e, handleActivity)
+      );
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
@@ -114,6 +138,9 @@ function App() {
     setCurrentUser(user);
     localStorage.setItem("lastActivity", Date.now().toString());
     resetInactivityTimer();
+
+    // reload beans after login
+    fetchBeans();
   };
 
   const handleLogout = () => clearSession();
@@ -140,28 +167,20 @@ function App() {
     }
 
     if (selectedModule === "beans") {
-      return <BeanManagement beans={beans} setBeans={setBeans} />;
+      return (
+        <BeanManagement
+          beans={beans}
+          setBeans={setBeans}
+          refreshBeans={fetchBeans}
+        />
+      );
     }
 
-    if (selectedModule === "admin") {
-      return <AdminPage />;
-    }
-
-    if (selectedModule === "delivery") {
-      return <DeliveryEntry />;
-    }
-
-    if (selectedModule === "forms") {
-      return <FormsGeneration />;
-    }
-
-    if (selectedModule === "reports") {
-      return <ReportModule />;
-    }
-
-    if (selectedModule === "transactions") {
-      return <TransactionHistory />;
-    }
+    if (selectedModule === "admin") return <AdminPage />;
+    if (selectedModule === "delivery") return <DeliveryEntry />;
+    if (selectedModule === "forms") return <FormsGeneration />;
+    if (selectedModule === "reports") return <ReportModule />;
+    if (selectedModule === "transactions") return <TransactionHistory />;
 
     return (
       <>
@@ -171,7 +190,6 @@ function App() {
               key={item}
               className="module-card"
               onClick={() => setSelectedModule(item)}
-              style={{ cursor: "pointer" }}
             >
               <div className="icon">📄</div>
               <p>
@@ -187,9 +205,7 @@ function App() {
                   ? "Forms Generation"
                   : item === "reports"
                   ? "Generate Reports"
-                  : item === "transactions"
-                  ? "Transaction History"
-                  : item}
+                  : "Transaction History"}
               </p>
             </div>
           ))}
@@ -209,7 +225,7 @@ function App() {
       <div className="main">
         <div className="header">
           <div className="logo-container">
-            <img src={dtiLogo} alt="DTI Logo" className="main-logo" />
+            <img src={dtiLogo} className="main-logo" />
             <div>
               <h2 className="system-name">DTI Accounting System</h2>
               <p className="system-subtitle">
@@ -217,6 +233,7 @@ function App() {
               </p>
             </div>
           </div>
+
           <h1 className="title">Dashboard</h1>
         </div>
 
@@ -229,42 +246,10 @@ function App() {
         {renderMainContent()}
       </div>
 
-      {/* ✅ UPDATED SIDEBAR */}
       <div className="sidebar">
         <div className="profile-card">
-          <div className="avatar">👤</div>
-
           <h3>{currentUser?.name || currentUser?.username}</h3>
-
-          <p className="role">
-            {currentUser?.role === "admin" ? "Admin" : "User"}
-          </p>
-
-          <p className="meta">
-            <strong>Username:</strong>
-            <br />
-            {currentUser?.username || "N/A"}
-          </p>
-
-          <p className="meta">
-            <strong>Position:</strong>
-            <br />
-            {currentUser?.position || "N/A"}
-          </p>
-
-          <p className="meta">
-            <strong>Sex:</strong> {currentUser?.sex || "N/A"}
-            <br />
-            <strong>Age:</strong> {currentUser?.age || "N/A"}
-          </p>
-
-          <p className="meta">
-            <strong>Account Created:</strong>
-            <br />
-            {currentUser?.createdAt
-              ? new Date(currentUser.createdAt).toLocaleString()
-              : "N/A"}
-          </p>
+          <p>{currentUser?.role}</p>
         </div>
 
         <button className="logout" onClick={handleLogout}>
