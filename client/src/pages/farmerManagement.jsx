@@ -3,7 +3,12 @@ import axios from "axios";
 
 function FarmerManagement() {
   const API = import.meta.env.VITE_API_URL;
-  const token = localStorage.getItem("token");
+
+  const rawToken = localStorage.getItem("token");
+  const token =
+    rawToken && rawToken.startsWith('"')
+      ? JSON.parse(rawToken)
+      : rawToken;
 
   const [farmers, setFarmers] = useState([]);
   const [beans, setBeans] = useState([]);
@@ -26,7 +31,7 @@ function FarmerManagement() {
 
   const authHeaders = {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: token ? `Bearer ${token}` : "",
       "Content-Type": "application/json",
     },
   };
@@ -35,7 +40,7 @@ function FarmerManagement() {
     /^[0-9a-fA-F]{24}$/.test(String(val));
 
   /* =========================
-     FETCH DATA (FARMERS + BEANS)
+     FETCH DATA
   ========================= */
   const fetchData = async () => {
     try {
@@ -65,8 +70,8 @@ function FarmerManagement() {
 
       setBeans(beansRes.data || []);
     } catch (err) {
-      console.error("FETCH ERROR:", err);
-      alert("Failed to load data.");
+      console.error("FETCH ERROR:", err.response?.data || err.message);
+      alert("Failed to load data (check auth/token)");
     }
   };
 
@@ -82,10 +87,9 @@ function FarmerManagement() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleBeanChange = (index, value) => {
+  const handleBeanChange = (i, value) => {
     const updated = [...form.beans];
-    updated[index] = value;
-
+    updated[i] = value;
     setForm((prev) => ({ ...prev, beans: updated }));
   };
 
@@ -96,9 +100,8 @@ function FarmerManagement() {
     }));
   };
 
-  const removeBeanField = (index) => {
-    const updated = form.beans.filter((_, i) => i !== index);
-
+  const removeBeanField = (i) => {
+    const updated = form.beans.filter((_, idx) => idx !== i);
     setForm((prev) => ({
       ...prev,
       beans: updated.length ? updated : [""],
@@ -114,9 +117,7 @@ function FarmerManagement() {
      VALIDATION
   ========================= */
   const validateForm = () => {
-    const selectedBeans = form.beans.filter(
-      (b) => String(b).trim() !== ""
-    );
+    const selectedBeans = form.beans.filter((b) => b.trim());
 
     if (!form.farmerID.trim()) return "Farmer ID required";
     if (!form.name.trim()) return "Name required";
@@ -126,7 +127,7 @@ function FarmerManagement() {
     if (!form.farmAddress.trim()) return "Farm address required";
     if (!form.contactNumber.trim()) return "Contact required";
     if (!form.emailAddress.trim()) return "Email required";
-    if (selectedBeans.length === 0) return "Select at least 1 bean";
+    if (!selectedBeans.length) return "Select at least 1 bean";
 
     return null;
   };
@@ -140,9 +141,7 @@ function FarmerManagement() {
     const error = validateForm();
     if (error) return alert(error);
 
-    const cleanedBeans = form.beans
-      .map((b) => String(b).trim())
-      .filter((b) => isMongoId(b));
+    const cleanedBeans = form.beans.filter((b) => isMongoId(b));
 
     const payload = {
       farmerID: form.farmerID,
@@ -174,8 +173,8 @@ function FarmerManagement() {
       await fetchData();
       resetForm();
     } catch (err) {
-      console.error(err);
-      alert("Save failed");
+      console.error(err.response?.data || err);
+      alert("Save failed (check backend auth/logs)");
     }
   };
 
@@ -193,10 +192,10 @@ function FarmerManagement() {
       farmAddress: f.farmAddress || "",
       contactNumber: f.contactNumber || "",
       emailAddress: f.emailAddress || "",
-      beans:
-        f.beans?.length
-          ? f.beans.map((b) => b._id || "")
-          : [""],
+
+      beans: Array.isArray(f.beans)
+        ? f.beans.map((b) => (typeof b === "string" ? b : b._id))
+        : [""],
     });
 
     setIsEditing(true);
@@ -209,14 +208,8 @@ function FarmerManagement() {
     if (!confirm("Delete farmer?")) return;
 
     try {
-      await axios.delete(
-        `${API}/api/farmers/${id}`,
-        authHeaders
-      );
-
-      setFarmers((prev) =>
-        prev.filter((f) => f.id !== id)
-      );
+      await axios.delete(`${API}/api/farmers/${id}`, authHeaders);
+      setFarmers((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
       console.error(err);
       alert("Delete failed");
@@ -230,7 +223,6 @@ function FarmerManagement() {
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
 
-      {/* FORM */}
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "10px", maxWidth: "700px" }}>
         <input name="farmerID" placeholder="Farmer ID" value={form.farmerID} onChange={handleChange} />
         <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
@@ -241,24 +233,19 @@ function FarmerManagement() {
           <option value="Female">Female</option>
         </select>
 
-        <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} />
+        <input name="age" type="number" value={form.age} onChange={handleChange} />
+        <input name="homeAddress" value={form.homeAddress} onChange={handleChange} />
+        <input name="farmAddress" value={form.farmAddress} onChange={handleChange} />
+        <input name="contactNumber" value={form.contactNumber} onChange={handleChange} />
+        <input name="emailAddress" value={form.emailAddress} onChange={handleChange} />
 
-        <input name="homeAddress" placeholder="Home Address" value={form.homeAddress} onChange={handleChange} />
-        <input name="farmAddress" placeholder="Farm Address" value={form.farmAddress} onChange={handleChange} />
-
-        <input name="contactNumber" placeholder="Contact" value={form.contactNumber} onChange={handleChange} />
-        <input name="emailAddress" placeholder="Email" value={form.emailAddress} onChange={handleChange} />
-
-        {/* BEANS DROPDOWN */}
+        {/* BEANS */}
         <div>
           <p>Beans</p>
 
           {form.beans.map((bean, i) => (
             <div key={i} style={{ display: "flex", gap: "10px" }}>
-              <select
-                value={bean}
-                onChange={(e) => handleBeanChange(i, e.target.value)}
-              >
+              <select value={bean} onChange={(e) => handleBeanChange(i, e.target.value)}>
                 <option value="">Select bean</option>
                 {beans.map((b) => (
                   <option key={b._id} value={b._id}>
@@ -278,9 +265,7 @@ function FarmerManagement() {
           ))}
         </div>
 
-        <button type="submit">
-          {isEditing ? "Update" : "Add"}
-        </button>
+        <button type="submit">{isEditing ? "Update" : "Add"}</button>
       </form>
 
       {/* TABLE */}
@@ -304,7 +289,9 @@ function FarmerManagement() {
               <td>{f.contactNumber}</td>
               <td>{f.emailAddress}</td>
               <td>
-                {f.beans?.map((b) => b.beanName).join(", ")}
+                {f.beans?.map((b) =>
+                  typeof b === "string" ? b : b.beanName
+                ).join(", ")}
               </td>
               <td>
                 <button onClick={() => handleEdit(f)}>Edit</button>
