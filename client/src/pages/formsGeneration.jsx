@@ -213,33 +213,39 @@ function FormsGeneration() {
      PRINT
   ========================= */
   const printTemplate = async () => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    try {
-      const res = await axios.post(
-        `${API_URL}/api/forms/print`,
-        buildDocData(),
-        {
-          responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+  try {
+    const res = await axios.post(
+      `${API_URL}/api/forms/print`,
+      buildDocData(),
+      {
+        responseType: "blob",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
 
-      const pdfBlob = new Blob([res.data], {
-        type: "application/pdf",
-      });
+    const pdfBlob = new Blob([res.data], {
+      type: "application/pdf",
+    });
 
-      const url = URL.createObjectURL(pdfBlob);
-      const win = window.open(url);
+    const url = URL.createObjectURL(pdfBlob);
 
-      win.onload = () => win.print();
-    } catch (err) {
-      console.error(err);
-      alert("Print failed.");
+    const win = window.open(url);
+
+    if (!win) {
+      alert("Popup blocked. Please allow popups for this site.");
+      return;
     }
-  };
+
+    win.onload = () => {
+      win.print();
+    };
+  } catch (err) {
+    console.error(err);
+    alert("Print failed.");
+  }
+};
 
   /* =========================
      UI
