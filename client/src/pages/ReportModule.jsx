@@ -300,7 +300,7 @@ const ReportModule = () => {
     <div className="report-module">
       <div className="report-header no-print">
         <div>
-          <h2>Monthly Report Generation</h2>
+          <h1>Monthly Report Generation</h1>
           <p>Generate consolidated reports for coffee bean transactions</p>
         </div>
 
