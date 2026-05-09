@@ -159,7 +159,7 @@ function FormsGeneration() {
     sex: selectedFarmer?.sex || "",
     age: selectedFarmer?.age || "",
 
-    homeAddress: selectedFarmer?.homeAddress || "",
+    residentialAddress: selectedFarmer?.residentialAddress || "",
     farmAddress: selectedFarmer?.farmAddress || "",
 
     contactNumber: selectedFarmer?.contactNumber || "",
@@ -292,8 +292,8 @@ function FormsGeneration() {
             </p>
 
             <p>
-              <strong>Home Address:</strong>{" "}
-              {selectedFarmer.homeAddress}
+              <strong>Residential Address:</strong>{" "}
+              {selectedFarmer.residentialAddress}
             </p>
 
             <p>
