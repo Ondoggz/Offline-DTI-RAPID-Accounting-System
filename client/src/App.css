@@ -182,3 +182,19 @@
     border-right-color: var(--border);
   }
 }
+
+
+/* ========================================
+   OVERRIDE BACKGROUND COLOR
+======================================== */
+
+/* Ensure app layout gets the new background */
+.app-layout {
+  background-color: #ECFDF5 !important;
+}
+
+/* Keep sidebar with slight transparency or white */
+.sidebar {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+}

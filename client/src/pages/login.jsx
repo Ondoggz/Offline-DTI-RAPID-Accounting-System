@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./login.css";
+import dtiLogo from "../assets/logos/dti-logo.png";
 
 export default function Login({ onLoginSuccess }) {
   const [form, setForm] = useState({
@@ -52,7 +53,9 @@ export default function Login({ onLoginSuccess }) {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="logo">Logo</h1>
+        <div className="login-logo-section">
+          <img src={dtiLogo} alt="DTI Logo" className="login-logo" />
+        </div>
         <p className="login-label">Login</p>
 
         <form onSubmit={handleSubmit}>

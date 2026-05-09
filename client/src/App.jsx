@@ -9,6 +9,7 @@ import TransactionHistory from "./pages/transactionHistory";
 import ReportModule from "./pages/ReportModule";
 import { authFetch } from "./utils/authFetch";
 import "./index.css";
+import dtiLogo from "./assets/logos/dti-logo.png";
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
@@ -207,7 +208,15 @@ function App() {
     <div className="app-layout">
       <div className="main">
         <div className="header">
-          <div className="logo">Logo</div>
+          <div className="logo-container">
+            <img src={dtiLogo} alt="DTI Logo" className="main-logo" />
+            <div>
+              <h2 className="system-name">DTI Accounting System</h2>
+              <p className="system-subtitle">
+                Palamboun Farmers Association
+              </p>
+            </div>
+          </div>
           <h1 className="title">Dashboard</h1>
         </div>
 
