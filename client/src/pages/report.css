@@ -1,4 +1,5 @@
 /* client/src/pages/report.css */
+
 .report-module {
   padding: 24px;
   max-width: 1400px;
@@ -8,12 +9,14 @@
   min-height: 100vh;
 }
 
+/* HEADER */
 .report-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 20px 24px;
+  gap: 24px;
+  margin-bottom: 32px;
+  padding: 24px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -21,13 +24,20 @@
 
 .report-header h2 {
   color: #2c3e50;
-  margin: 0 0 24px 0;
+  margin: 0;
   font-size: 28px;
 }
 
 .report-header p {
   color: #7f8c8d;
-    margin: 0 0 24px 0;
+  margin: 6px 0 0 0;
+}
+
+/* BUTTONS */
+.report-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .print-btn {
@@ -47,18 +57,21 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
+/* CONTROLS */
 .report-controls {
   background: white;
-  padding: 24px;
+  padding: 28px;
   border-radius: 12px;
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 24px;
+  row-gap: 16px;
   margin-bottom: 24px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   align-items: flex-end;
 }
 
+/* FORM */
 .form-group {
   display: flex;
   flex-direction: column;
@@ -90,6 +103,7 @@
   outline: none;
 }
 
+/* BUTTON */
 .generate-btn {
   background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
@@ -111,6 +125,7 @@
   cursor: not-allowed;
 }
 
+/* ERROR */
 .error-message {
   background: #fee;
   color: #c62828;
@@ -120,6 +135,7 @@
   border-left: 4px solid #c62828;
 }
 
+/* REPORT CONTENT */
 .report-content {
   background: white;
   border-radius: 12px;
@@ -127,6 +143,7 @@
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
 }
 
+/* TITLE */
 .report-title {
   text-align: center;
   margin-bottom: 32px;
@@ -150,16 +167,24 @@
   color: #95a5a6;
 }
 
-.charts-section {
-  margin-bottom: 40px;
+/* SECTIONS SPACING */
+.charts-section,
+.organization-summary,
+.monthly-breakdown,
+.farmer-table-container {
+  margin-top: 32px;
 }
 
-.charts-section h3 {
+.charts-section h3,
+.organization-summary h3,
+.farmer-table-container h3,
+.monthly-breakdown h3 {
   color: #2c3e50;
   margin-bottom: 20px;
   font-size: 20px;
 }
 
+/* CHARTS */
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -193,22 +218,11 @@
   position: relative;
 }
 
-.organization-summary {
-  margin-bottom: 40px;
-}
-
-.organization-summary h3,
-.farmer-table-container h3,
-.monthly-breakdown h3 {
-  color: #2c3e50;
-  margin-bottom: 20px;
-  font-size: 20px;
-}
-
+/* SUMMARY CARDS */
 .summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  gap: 24px;
   margin-bottom: 32px;
 }
 
@@ -242,18 +256,7 @@
   opacity: 0.8;
 }
 
-.bean-breakdown {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 12px;
-  margin-top: 20px;
-}
-
-.bean-breakdown h4 {
-  margin: 0 0 16px 0;
-  color: #2c3e50;
-}
-
+/* TABLES */
 .table-responsive {
   overflow-x: auto;
 }
@@ -280,7 +283,6 @@
   font-weight: 600;
   font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .report-table tbody tr:hover {
@@ -304,66 +306,63 @@
   font-size: 16px;
 }
 
-/* Print styles */
+/* PRINT */
 @media print {
+  .no-print,
   .report-controls,
-  .generate-btn,
+  .report-actions,
   .print-btn,
-  .report-header button {
+  .generate-btn {
     display: none !important;
   }
-  
+
   .report-module {
     padding: 0;
     background: white;
   }
-  
+
   .report-content {
     box-shadow: none;
-    padding: 20px;
+    padding: 16px;
   }
-  
+
+  .card,
+  .chart-card {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    break-inside: avoid;
+  }
+
   .report-table th {
     background: #2c3e50 !important;
     color: white !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  
-  .card {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  
-  .chart-card {
-    break-inside: avoid;
   }
 }
 
-/* Responsive */
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .report-module {
     padding: 16px;
   }
-  
+
   .report-header {
     flex-direction: column;
     text-align: center;
     gap: 16px;
   }
-  
+
   .charts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .summary-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .form-group select {
     min-width: 100%;
   }
-  
+
   .report-table th,
   .report-table td {
     padding: 8px 12px;
