@@ -181,9 +181,6 @@ function DeliveryEntry() {
   return (
     <div className="delivery-container">
       <div className="delivery-header">
-        <span className="back-icon" onClick={() => setShowForm(false)}>
-          ←
-        </span>
         <h2>Delivery Entry</h2>
       </div>
 
