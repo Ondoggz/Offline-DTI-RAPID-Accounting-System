@@ -34,9 +34,6 @@ function FarmerManagement() {
   const isMongoId = (val) =>
     /^[0-9a-fA-F]{24}$/.test(String(val));
 
-  /* =========================
-     FETCH DATA (FARMERS + BEANS)
-  ========================= */
   const fetchData = async () => {
     try {
       const [farmersRes, beansRes] = await Promise.all([
@@ -74,9 +71,6 @@ function FarmerManagement() {
     if (API && token) fetchData();
   }, [API, token]);
 
-  /* =========================
-     FORM HANDLERS
-  ========================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -110,9 +104,6 @@ function FarmerManagement() {
     setIsEditing(false);
   };
 
-  /* =========================
-     VALIDATION
-  ========================= */
   const validateForm = () => {
     const selectedBeans = form.beans.filter(
       (b) => String(b).trim() !== ""
@@ -131,9 +122,6 @@ function FarmerManagement() {
     return null;
   };
 
-  /* =========================
-     SUBMIT
-  ========================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -179,9 +167,6 @@ function FarmerManagement() {
     }
   };
 
-  /* =========================
-     EDIT
-  ========================= */
   const handleEdit = (f) => {
     setForm({
       id: f.id,
@@ -202,9 +187,6 @@ function FarmerManagement() {
     setIsEditing(true);
   };
 
-  /* =========================
-     DELETE
-  ========================= */
   const handleDelete = async (id) => {
     if (!confirm("Delete farmer?")) return;
 
@@ -223,9 +205,6 @@ function FarmerManagement() {
     }
   };
 
-  /* =========================
-     UI
-  ========================= */
   return (
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
