@@ -236,13 +236,11 @@ function FormsGeneration() {
           ))}
         </select>
 
-        {/* ✅ ONLY CHANGE APPLIED HERE */}
         <input
           type="datetime-local"
           name="deliveryDT"
           value={form.deliveryDT}
           onChange={handleFormChange}
-          onInput={(e) => e.target.blur()}
         />
 
         <input
@@ -336,12 +334,14 @@ function FormsGeneration() {
 
             <input value={total} readOnly />
 
+            {/* ✅ FIX APPLIED HERE */}
             <input
               type="datetime-local"
               value={row.paymentDT}
-              onChange={(e) =>
-                handleRowChange(i, "paymentDT", e.target.value)
-              }
+              onChange={(e) => {
+                handleRowChange(i, "paymentDT", e.target.value);
+                e.target.blur();
+              }}
             />
 
             <input
