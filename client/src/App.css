@@ -183,12 +183,6 @@
   }
 }
 
-
-/* ========================================
-   OVERRIDE BACKGROUND COLOR
-======================================== */
-
-/* Ensure app layout gets the new background */
 .app-layout {
   background-color: #ECFDF5 !important;
 }
