@@ -14,12 +14,25 @@ const farmerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    sex: {
+      type: String,
+      required: true,
+      enum: ["Male", "Female"],
+      trim: true,
+    },
+
     age: {
       type: Number,
       required: true,
     },
 
-    address: {
+    residentialAddress: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    farmAddress: {
       type: String,
       required: true,
       trim: true,

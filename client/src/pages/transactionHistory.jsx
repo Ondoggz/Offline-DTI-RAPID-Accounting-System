@@ -5,9 +5,8 @@ function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [details, setDetails] = useState({});
-  const [amounts, setAmounts] = useState({}); // FIX: per-transaction input
+  const [amounts, setAmounts] = useState({});
 
-  // GET ALL TRANSACTIONS
   useEffect(() => {
     fetchTransactions();
   }, []);
@@ -20,7 +19,6 @@ function TransactionHistory() {
     setTransactions(data.data || []);
   };
 
-  // GET SINGLE TRANSACTION + PAYMENTS + SUMMARY
   const fetchDetails = async (id) => {
     try {
       const res = await authFetch(
@@ -37,41 +35,43 @@ function TransactionHistory() {
     }
   };
 
-  // TOGGLE DROPDOWN
   const toggle = (id) => {
     const newId = openId === id ? null : id;
     setOpenId(newId);
 
-    if (newId) {
-      fetchDetails(id); // load after opening
-    }
+    if (newId) fetchDetails(id);
   };
 
-  // ADD PAYMENT
   const addPayment = async (id) => {
-    const amount = amounts[id];
+    const amount = Number(amounts[id] || 0);
+    const balance = Number(details[id]?.summary?.balance || 0);
 
-    if (!amount || Number(amount) <= 0) return;
+    // ✅ BLOCK INVALID INPUTS
+    if (amount <= 0) {
+      alert("Payment must be greater than 0");
+      return;
+    }
 
-    await authFetch(
-      `${import.meta.env.VITE_API_URL}/api/payments`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deliveryId: id,
-          amountPaid: Number(amount),
-        }),
-      }
-    );
+    if (amount > balance) {
+      alert(`Payment exceeds remaining balance (₱${balance})`);
+      return;
+    }
 
-    // reset input for that transaction only
+    await authFetch(`${import.meta.env.VITE_API_URL}/api/payments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deliveryId: id,
+        amountPaid: amount,
+      }),
+    });
+
     setAmounts((prev) => ({
       ...prev,
       [id]: "",
     }));
 
-    fetchDetails(id); // refresh
+    fetchDetails(id);
   };
 
   return (
@@ -82,6 +82,8 @@ function TransactionHistory() {
         const data = details[t._id];
         const summary = data?.summary;
         const payments = data?.payments;
+
+        const balance = summary?.balance || 0;
 
         return (
           <div
@@ -106,7 +108,7 @@ function TransactionHistory() {
               <span>₱{t.amount}</span>
             </div>
 
-            {/* DROPDOWN (FIXED - NO BLOCKING CONDITION) */}
+            {/* DROPDOWN */}
             {openId === t._id && (
               <div style={{ marginTop: 10 }}>
                 <p>Bean: {t.beanType}</p>
@@ -114,12 +116,11 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* SUMMARY */}
                 {summary ? (
                   <>
                     <p>Total: ₱{t.amount}</p>
                     <p>Paid: ₱{summary.totalPaid}</p>
-                    <p>Balance: ₱{summary.balance}</p>
+                    <p>Balance: ₱{balance}</p>
                     <p>Status: {summary.status}</p>
                   </>
                 ) : (
@@ -128,7 +129,6 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* PAYMENTS */}
                 <h4>Payments</h4>
 
                 {payments?.length > 0 ? (
@@ -141,10 +141,12 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* ADD PAYMENT */}
+                {/* PAYMENT INPUT */}
                 <input
                   type="number"
-                  placeholder="Enter payment"
+                  min="0"
+                  step="0.01"
+                  placeholder={`Enter payment (max ₱${balance})`}
                   value={amounts[t._id] || ""}
                   onChange={(e) =>
                     setAmounts((prev) => ({

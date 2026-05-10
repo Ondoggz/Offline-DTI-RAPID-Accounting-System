@@ -300,7 +300,7 @@ const ReportModule = () => {
     <div className="report-module">
       <div className="report-header no-print">
         <div>
-          <h1>📊 Monthly Report Generation</h1>
+          <h2>Monthly Report Generation</h2>
           <p>Generate consolidated reports for coffee bean transactions</p>
         </div>
 
@@ -403,7 +403,7 @@ const ReportModule = () => {
       {reportData && (
         <div className="report-content" id="report-content">
           <div className="report-title">
-            <h2>☕ DTI Coffee Bean Trading Report</h2>
+            <h2>DTI Coffee Bean Trading Report</h2>
             <p>
               {rangeType === "single"
                 ? `${months[month - 1]} ${year}`
@@ -415,13 +415,13 @@ const ReportModule = () => {
           </div>
 
           <div className="charts-section">
-            <h3>📈 Visual Analytics</h3>
+            <h3>Visual Analytics</h3>
             {renderSalesChart()}
           </div>
 
           {reportType !== "per-farmer" && (
             <div className="organization-summary">
-              <h3>🏢 Organization-Wide Summary</h3>
+              <h3>Organization-Wide Summary</h3>
 
               {rangeType === "single" && reportData.data.organization && (
                 <div className="summary-cards">
@@ -485,7 +485,7 @@ const ReportModule = () => {
 
           {rangeType === "range" && Array.isArray(reportData.data) && (
             <div className="monthly-breakdown">
-              <h3>📆 Monthly Breakdown</h3>
+              <h3>Monthly Breakdown</h3>
 
               <div className="table-responsive">
                 <table className="report-table">

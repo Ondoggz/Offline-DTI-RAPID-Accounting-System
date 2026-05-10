@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-function FarmerManagement({ beans = [] }) {
+function FarmerManagement() {
   const API = import.meta.env.VITE_API_URL;
   const token = localStorage.getItem("token");
 
   const [farmers, setFarmers] = useState([]);
+  const [beans, setBeans] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const initialForm = {
     id: null,
     farmerID: "",
     name: "",
+    sex: "",
     age: "",
-    address: "",
+    residentialAddress: "",
+    farmAddress: "",
     contactNumber: "",
     emailAddress: "",
     beans: [""],
@@ -28,210 +32,471 @@ function FarmerManagement({ beans = [] }) {
     },
   };
 
-  const isMongoId = (val) => /^[0-9a-fA-F]{24}$/.test(String(val));
+  const isMongoId = (val) =>
+    /^[0-9a-fA-F]{24}$/.test(String(val));
 
-  const normalizedBeans = beans
-    .map((b) => ({
-      _id: b._id || b.id,
-      beanName: b.beanName || b.name,
-    }))
-    .filter((b) => b._id && b.beanName);
-
-  const fetchFarmers = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get(`${API}/api/farmers`, authHeaders);
-      const farmerList = Array.isArray(res.data) ? res.data : res.data.data || [];
+      const [farmersRes, beansRes] = await Promise.all([
+        axios.get(`${API}/api/farmers`, authHeaders),
+        axios.get(`${API}/api/beans`, authHeaders),
+      ]);
+
+      const farmerList = Array.isArray(farmersRes.data)
+        ? farmersRes.data
+        : farmersRes.data.data || [];
 
       setFarmers(
         farmerList.map((f) => ({
           id: f._id,
           farmerID: f.farmerID || "",
           name: f.name || "",
+          sex: f.sex || "",
           age: f.age || "",
-          address: f.address || "",
+          residentialAddress: f.residentialAddress || "",
+          farmAddress: f.farmAddress || "",
           contactNumber: f.contactNumber || "",
           emailAddress: f.emailAddress || "",
           beans: Array.isArray(f.beans) ? f.beans : [],
         }))
       );
+
+      setBeans(beansRes.data || []);
     } catch (err) {
-      console.error("FETCH FARMERS ERROR:", err.response?.data || err.message);
-      alert(err.response?.data?.message || "Failed to fetch farmers.");
+      console.error("FETCH ERROR:", err);
+      alert("Failed to load data.");
     }
   };
 
   useEffect(() => {
-    if (API && token) fetchFarmers();
+    if (API && token) fetchData();
   }, [API, token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
   };
 
   const handleBeanChange = (index, value) => {
-    const updatedBeans = [...form.beans];
-    updatedBeans[index] = value;
-    setForm((prev) => ({ ...prev, beans: updatedBeans }));
+    const updated = [...form.beans];
+    updated[index] = value;
+
+    setForm((prev) => ({ ...prev, beans: updated }));
+
+    setErrors((prev) => ({
+      ...prev,
+      beans: "",
+    }));
   };
 
   const addBeanField = () => {
-    setForm((prev) => ({ ...prev, beans: [...prev.beans, ""] }));
+    setForm((prev) => ({
+      ...prev,
+      beans: [...prev.beans, ""],
+    }));
   };
 
   const removeBeanField = (index) => {
-    const updatedBeans = form.beans.filter((_, i) => i !== index);
+    const updated = form.beans.filter((_, i) => i !== index);
+
     setForm((prev) => ({
       ...prev,
-      beans: updatedBeans.length ? updatedBeans : [""],
+      beans: updated.length ? updated : [""],
     }));
   };
 
   const resetForm = () => {
     setForm(initialForm);
+    setErrors({});
     setIsEditing(false);
   };
 
   const validateForm = () => {
-    const selectedBeans = form.beans.filter((b) => String(b).trim() !== "");
+    const newErrors = {};
 
-    if (!form.farmerID.trim()) return "Farmer ID is required.";
-    if (!form.name.trim()) return "Name is required.";
-    if (!form.age || Number(form.age) <= 0) return "Valid age is required.";
-    if (!form.address.trim()) return "Address is required.";
-    if (!form.contactNumber.trim()) return "Contact number is required.";
-    if (!form.emailAddress.trim()) return "Email address is required.";
-    if (selectedBeans.length === 0) return "Please select at least one bean type.";
+    const selectedBeans = form.beans.filter(
+      (b) => String(b).trim() !== ""
+    );
 
-    const invalidBean = selectedBeans.find((beanId) => !isMongoId(beanId));
-    if (invalidBean) return "Invalid bean selected. Please reselect the bean type.";
+    if (!form.farmerID.trim()) {
+      newErrors.farmerID = "Farmer ID required";
+    }
 
-    return null;
+    if (!form.name.trim()) {
+      newErrors.name = "Full name required";
+    } else {
+      const wordCount = form.name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
+
+      if (wordCount < 3) {
+        newErrors.name =
+          "Include first name, middle name, and surname. Use N/A if no middle name.";
+      }
+    }
+
+    if (!form.sex.trim()) {
+      newErrors.sex = "Sex required";
+    }
+
+    if (!form.age || Number(form.age) <= 0) {
+      newErrors.age = "Valid age required";
+    }
+
+    if (!form.residentialAddress.trim()) {
+      newErrors.residentialAddress =
+        "Residential address required";
+    }
+
+    if (!form.farmAddress.trim()) {
+      newErrors.farmAddress = "Farm address required";
+    }
+
+    if (!form.contactNumber.trim()) {
+      newErrors.contactNumber = "Contact number required";
+    } else if (!/^\d{11}$/.test(form.contactNumber)) {
+      newErrors.contactNumber =
+        "Contact number must be exactly 11 digits";
+    }
+
+    if (!form.emailAddress.trim()) {
+      newErrors.emailAddress = "Email required";
+    }
+
+    if (selectedBeans.length === 0) {
+      newErrors.beans = "Select at least one bean";
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const errorMessage = validateForm();
-    if (errorMessage) {
-      alert(errorMessage);
-      return;
-    }
+    const valid = validateForm();
+
+    if (!valid) return;
 
     const cleanedBeans = form.beans
       .map((b) => String(b).trim())
       .filter((b) => isMongoId(b));
 
-    const farmerData = {
-      farmerID: form.farmerID.trim(),
-      name: form.name.trim(),
+    const payload = {
+      farmerID: form.farmerID,
+      name: form.name,
+      sex: form.sex,
       age: Number(form.age),
-      address: form.address.trim(),
-      contactNumber: form.contactNumber.trim(),
-      emailAddress: form.emailAddress.trim(),
+      residentialAddress: form.residentialAddress,
+      farmAddress: form.farmAddress,
+      contactNumber: form.contactNumber,
+      emailAddress: form.emailAddress,
       beans: cleanedBeans,
     };
 
-    console.log("FARMER PAYLOAD:", farmerData);
-
     try {
       if (isEditing) {
-        await axios.put(`${API}/api/farmers/${form.id}`, farmerData, authHeaders);
+        await axios.put(
+          `${API}/api/farmers/${form.id}`,
+          payload,
+          authHeaders
+        );
       } else {
-        await axios.post(`${API}/api/farmers`, farmerData, authHeaders);
+        await axios.post(
+          `${API}/api/farmers`,
+          payload,
+          authHeaders
+        );
       }
 
-      await fetchFarmers();
+      await fetchData();
       resetForm();
     } catch (err) {
-      console.error("SAVE FARMER ERROR:", err);
-      console.log("BACKEND RESPONSE:", err.response?.data);
-      alert(err.response?.data?.message || "Failed to save farmer.");
+      console.error(err);
+      alert("Save failed");
     }
   };
 
-  const handleEdit = (farmer) => {
+  const handleEdit = (f) => {
     setForm({
-      id: farmer.id,
-      farmerID: farmer.farmerID || "",
-      name: farmer.name || "",
-      age: farmer.age || "",
-      address: farmer.address || "",
-      contactNumber: farmer.contactNumber || "",
-      emailAddress: farmer.emailAddress || "",
+      id: f.id,
+      farmerID: f.farmerID || "",
+      name: f.name || "",
+      sex: f.sex || "",
+      age: f.age || "",
+      residentialAddress: f.residentialAddress || "",
+      farmAddress: f.farmAddress || "",
+      contactNumber: f.contactNumber || "",
+      emailAddress: f.emailAddress || "",
       beans:
-        farmer.beans?.length > 0
-          ? farmer.beans.map((b) => b._id || b.id || "").filter(Boolean)
+        f.beans?.length
+          ? f.beans.map((b) => b._id || "")
           : [""],
     });
 
+    setErrors({});
     setIsEditing(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this farmer?")) return;
+    if (!confirm("Delete farmer?")) return;
 
     try {
-      await axios.delete(`${API}/api/farmers/${id}`, authHeaders);
-      setFarmers((prev) => prev.filter((f) => f.id !== id));
+      await axios.delete(
+        `${API}/api/farmers/${id}`,
+        authHeaders
+      );
+
+      setFarmers((prev) =>
+        prev.filter((f) => f.id !== id)
+      );
     } catch (err) {
-      console.error("DELETE FARMER ERROR:", err.response?.data || err.message);
-      alert(err.response?.data?.message || "Failed to delete farmer.");
+      console.error(err);
+      alert("Delete failed");
     }
+  };
+
+  const bubbleStyle = {
+    background: "#fff4e5",
+    border: "1px solid #f5c26b",
+    color: "#8a5700",
+    padding: "6px 10px",
+    borderRadius: "12px",
+    fontSize: "12px",
+    marginTop: "4px",
+    display: "inline-block",
+    maxWidth: "400px",
   };
 
   return (
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
 
-      <form onSubmit={handleSubmit}>
-        <input name="farmerID" placeholder="Farmer ID" value={form.farmerID} onChange={handleChange} />
-        <input name="name" placeholder="Full Name" value={form.name} onChange={handleChange} />
-        <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} />
-        <input name="address" placeholder="Address" value={form.address} onChange={handleChange} />
-        <input name="contactNumber" placeholder="Contact Number" value={form.contactNumber} onChange={handleChange} />
-        <input name="emailAddress" type="email" placeholder="Email Address" value={form.emailAddress} onChange={handleChange} />
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "grid",
+          gap: "14px",
+          maxWidth: "700px",
+        }}
+      >
+        <div>
+          <input
+            name="farmerID"
+            placeholder="Farmer ID"
+            value={form.farmerID}
+            onChange={handleChange}
+          />
+
+          {errors.farmerID && (
+            <div style={bubbleStyle}>
+              {errors.farmerID}
+            </div>
+          )}
+        </div>
 
         <div>
-          <p>Bean Types</p>
+          <input
+            name="name"
+            placeholder="Full Name"
+            value={form.name}
+            onChange={handleChange}
+          />
+
+          {errors.name && (
+            <div style={bubbleStyle}>
+              {errors.name}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <select
+            name="sex"
+            value={form.sex}
+            onChange={handleChange}
+          >
+            <option value="">Select Sex</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+
+          {errors.sex && (
+            <div style={bubbleStyle}>
+              {errors.sex}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <input
+            name="age"
+            type="number"
+            placeholder="Age"
+            value={form.age}
+            onChange={handleChange}
+          />
+
+          {errors.age && (
+            <div style={bubbleStyle}>
+              {errors.age}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <input
+            name="residentialAddress"
+            placeholder="Residential Address"
+            value={form.residentialAddress}
+            onChange={handleChange}
+          />
+
+          {errors.residentialAddress && (
+            <div style={bubbleStyle}>
+              {errors.residentialAddress}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <input
+            name="farmAddress"
+            placeholder="Farm Address"
+            value={form.farmAddress}
+            onChange={handleChange}
+          />
+
+          {errors.farmAddress && (
+            <div style={bubbleStyle}>
+              {errors.farmAddress}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <input
+            name="contactNumber"
+            placeholder="11-digit Contact Number"
+            value={form.contactNumber}
+            maxLength={11}
+            onChange={(e) => {
+              const numbersOnly = e.target.value.replace(/\D/g, "");
+
+              setForm((prev) => ({
+                ...prev,
+                contactNumber: numbersOnly,
+              }));
+
+              setErrors((prev) => ({
+                ...prev,
+                contactNumber: "",
+              }));
+            }}
+          />
+
+          {errors.contactNumber && (
+            <div style={bubbleStyle}>
+              {errors.contactNumber}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <input
+            name="emailAddress"
+            placeholder="Email"
+            value={form.emailAddress}
+            onChange={handleChange}
+          />
+
+          {errors.emailAddress && (
+            <div style={bubbleStyle}>
+              {errors.emailAddress}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p>Beans</p>
 
           {form.beans.map((bean, i) => (
-            <div key={i}>
-              <select value={bean} onChange={(e) => handleBeanChange(i, e.target.value)}>
-                <option value="">Select bean type</option>
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                gap: "10px",
+                marginBottom: "10px",
+              }}
+            >
+              <select
+                value={bean}
+                onChange={(e) =>
+                  handleBeanChange(i, e.target.value)
+                }
+              >
+                <option value="">Select bean</option>
 
-                {normalizedBeans.map((b) => (
+                {beans.map((b) => (
                   <option key={b._id} value={b._id}>
                     {b.beanName}
                   </option>
                 ))}
               </select>
 
-              <button type="button" onClick={addBeanField}>+</button>
+              <button type="button" onClick={addBeanField}>
+                +
+              </button>
 
               {form.beans.length > 1 && (
-                <button type="button" onClick={() => removeBeanField(i)}>-</button>
+                <button
+                  type="button"
+                  onClick={() => removeBeanField(i)}
+                >
+                  -
+                </button>
               )}
             </div>
           ))}
+
+          {errors.beans && (
+            <div style={bubbleStyle}>
+              {errors.beans}
+            </div>
+          )}
         </div>
 
-        <button type="submit">{isEditing ? "Update Farmer" : "Add Farmer"}</button>
-
-        {isEditing && (
-          <button type="button" onClick={resetForm}>
-            Cancel Edit
-          </button>
-        )}
+        <button type="submit">
+          {isEditing ? "Update" : "Add"}
+        </button>
       </form>
 
-      <table border="1" style={{ marginTop: "20px", width: "100%" }}>
+      <table
+        border="1"
+        style={{
+          marginTop: "20px",
+          width: "100%",
+        }}
+      >
         <thead>
           <tr>
-            <th>Farmer ID</th>
+            <th>ID</th>
             <th>Name</th>
+            <th>Sex</th>
             <th>Age</th>
-            <th>Address</th>
+            <th>Residential Address</th>
+            <th>Farm Address</th>
             <th>Contact</th>
             <th>Email</th>
             <th>Beans</th>
@@ -242,20 +507,27 @@ function FarmerManagement({ beans = [] }) {
         <tbody>
           {farmers.map((f) => (
             <tr key={f.id}>
-              <td>{f.farmerID || "-"}</td>
-              <td>{f.name || "-"}</td>
-              <td>{f.age || "-"}</td>
-              <td>{f.address || "-"}</td>
-              <td>{f.contactNumber || "-"}</td>
-              <td>{f.emailAddress || "-"}</td>
+              <td>{f.farmerID}</td>
+              <td>{f.name}</td>
+              <td>{f.sex}</td>
+              <td>{f.age}</td>
+              <td>{f.residentialAddress}</td>
+              <td>{f.farmAddress}</td>
+              <td>{f.contactNumber}</td>
+              <td>{f.emailAddress}</td>
+
               <td>
-                {f.beans?.length
-                  ? f.beans.map((b) => b.beanName || b.name || "").filter(Boolean).join(", ")
-                  : "-"}
+                {f.beans?.map((b) => b.beanName).join(", ")}
               </td>
+
               <td>
-                <button type="button" onClick={() => handleEdit(f)}>Edit</button>
-                <button type="button" onClick={() => handleDelete(f.id)}>Delete</button>
+                <button onClick={() => handleEdit(f)}>
+                  Edit
+                </button>
+
+                <button onClick={() => handleDelete(f.id)}>
+                  Delete
+                </button>
               </td>
             </tr>
           ))}

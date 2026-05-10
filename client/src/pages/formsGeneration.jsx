@@ -33,9 +33,6 @@ function FormsGeneration() {
   const token = localStorage.getItem("token");
   const API = import.meta.env.VITE_API_URL;
 
-  /* =========================
-     FETCH DATA
-  ========================= */
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -68,18 +65,12 @@ function FormsGeneration() {
     }
   }, [API, token]);
 
-  /* =========================
-     HELPERS
-  ========================= */
   const selectedFarmer = useMemo(() => {
     return farmers.find((f) => f._id === form.farmerId) || null;
   }, [farmers, form.farmerId]);
 
   const getBeanById = (id) => beans.find((b) => b.id === id);
 
-  /* =========================
-     ROW CALCULATIONS
-  ========================= */
   const computedRows = rows.map((row) => {
     const bean = getBeanById(row.beanId);
     const unitCost = Number(bean?.pricePerUnit || 0);
@@ -98,9 +89,6 @@ function FormsGeneration() {
     0
   );
 
-  /* =========================
-     FORM HANDLERS
-  ========================= */
   const handleFormChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -133,9 +121,6 @@ function FormsGeneration() {
     );
   };
 
-  /* =========================
-     VALIDATION
-  ========================= */
   const validateForm = () => {
     if (!selectedFarmer) {
       alert("Please select a farmer.");
@@ -150,31 +135,25 @@ function FormsGeneration() {
     return true;
   };
 
-  /* =========================
-     DOC DATA
-  ========================= */
   const buildDocData = () => ({
     idNumber: selectedFarmer?.farmerID || "",
     name: selectedFarmer?.name || "",
-    address: selectedFarmer?.address || "",
+    sex: selectedFarmer?.sex || "",
+    age: selectedFarmer?.age || "",
+    residentialAddress: selectedFarmer?.residentialAddress || "",
+    farmAddress: selectedFarmer?.farmAddress || "",
     contactNumber: selectedFarmer?.contactNumber || "",
     emailAddress: selectedFarmer?.emailAddress || "",
-
     deliveryDT: form.deliveryDT,
     beanOrigin: form.beanOrigin,
     beanAltitude: form.beanAltitude,
     remarks: form.remarks,
-
     receiverName: form.receiverName,
     payorName: form.payorName,
-
     amountInFigures: grandTotal,
     rows: computedRows,
   });
 
-  /* =========================
-     DOCX EXPORT
-  ========================= */
   const exportDocx = async () => {
     if (!validateForm()) return;
 
@@ -183,6 +162,7 @@ function FormsGeneration() {
       const content = await response.arrayBuffer();
 
       const zip = new PizZip(content);
+
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
@@ -203,9 +183,6 @@ function FormsGeneration() {
     }
   };
 
-  /* =========================
-     PRINT
-  ========================= */
   const printTemplate = async () => {
     if (!validateForm()) return;
 
@@ -224,23 +201,27 @@ function FormsGeneration() {
       });
 
       const url = URL.createObjectURL(pdfBlob);
+
       const win = window.open(url);
 
-      win.onload = () => win.print();
+      if (!win) {
+        alert("Popup blocked. Please allow popups for this site.");
+        return;
+      }
+
+      win.onload = () => {
+        win.print();
+      };
     } catch (err) {
       console.error(err);
       alert("Print failed.");
     }
   };
 
-  /* =========================
-     UI
-  ========================= */
   return (
     <div style={{ padding: "20px" }}>
       <h2>Forms Generation</h2>
 
-      {/* FORM */}
       <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
         <select
           name="farmerId"
@@ -255,11 +236,13 @@ function FormsGeneration() {
           ))}
         </select>
 
+        {/* ✅ ONLY CHANGE APPLIED HERE */}
         <input
           type="datetime-local"
           name="deliveryDT"
           value={form.deliveryDT}
           onChange={handleFormChange}
+          onInput={(e) => e.target.blur()}
         />
 
         <input
@@ -298,7 +281,6 @@ function FormsGeneration() {
         />
       </div>
 
-      {/* ROWS */}
       <h3 style={{ marginTop: "20px" }}>Rows</h3>
 
       {rows.map((row, i) => {
@@ -307,18 +289,31 @@ function FormsGeneration() {
         const total = unitCost * (row.volume || 0);
 
         return (
-          <div key={i} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px" }}>
+          <div
+            key={i}
+            style={{
+              border: "1px solid #ccc",
+              padding: "10px",
+              marginBottom: "10px",
+              display: "grid",
+              gap: "10px",
+            }}
+          >
             <strong>Row {i + 1}</strong>
 
             <input
               placeholder="AR No"
               value={row.arNo}
-              onChange={(e) => handleRowChange(i, "arNo", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "arNo", e.target.value)
+              }
             />
 
             <select
               value={row.beanId}
-              onChange={(e) => handleRowChange(i, "beanId", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "beanId", e.target.value)
+              }
             >
               <option value="">Select Bean</option>
               {beans.map((b) => (
@@ -329,11 +324,14 @@ function FormsGeneration() {
             </select>
 
             <input value={unitCost} readOnly />
+
             <input
               type="number"
               placeholder="Volume"
               value={row.volume}
-              onChange={(e) => handleRowChange(i, "volume", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "volume", e.target.value)
+              }
             />
 
             <input value={total} readOnly />
@@ -341,13 +339,18 @@ function FormsGeneration() {
             <input
               type="datetime-local"
               value={row.paymentDT}
-              onChange={(e) => handleRowChange(i, "paymentDT", e.target.value)}
+              onChange={(e) => {
+                handleRowChange(i, "paymentDT", e.target.value);
+                e.target.blur();
+            }}
             />
 
             <input
               placeholder="Remarks"
               value={row.remarks2}
-              onChange={(e) => handleRowChange(i, "remarks2", e.target.value)}
+              onChange={(e) =>
+                handleRowChange(i, "remarks2", e.target.value)
+              }
             />
 
             <button onClick={() => removeRow(i)}>Remove</button>
@@ -357,8 +360,11 @@ function FormsGeneration() {
 
       <button onClick={addRow}>+ Add Row</button>
 
-      {/* ACTIONS */}
       <div style={{ marginTop: "20px" }}>
+        <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
+      </div>
+
+      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
         <button onClick={exportDocx}>Export DOCX</button>
         <button onClick={printTemplate}>Print</button>
       </div>

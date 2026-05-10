@@ -20,18 +20,31 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
 
-  const [beans, setBeans] = useState([
-    { id: 1, name: "Arabica", pricePerUnit: 180, unit: "kg", farmers: [] },
-    { id: 2, name: "Robusta", pricePerUnit: 150, unit: "kg", farmers: [] },
-    { id: 3, name: "Excelsa", pricePerUnit: 170, unit: "kg", farmers: [] },
-  ]);
+  const [beans, setBeans] = useState([]);
 
   const timeoutRef = useRef(null);
 
+  const API = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
+
+  const authHeaders = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const fetchBeans = async () => {
+    try {
+      const res = await fetch(`${API}/api/beans`, authHeaders);
+      const data = await res.json();
+      setBeans(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Bean fetch error:", err);
+    }
+  };
+
   const clearSession = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("lastActivity");
+    localStorage.clear();
     setIsLoggedIn(false);
     setCurrentUser(null);
     setSelectedModule(null);
@@ -48,7 +61,7 @@ function App() {
   };
 
   useEffect(() => {
-    const initializeApp = async () => {
+    const init = async () => {
       const savedToken = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
       const lastActivity = localStorage.getItem("lastActivity");
@@ -60,20 +73,15 @@ function App() {
           clearSession();
         } else {
           try {
-            const res = await authFetch(
-              `${import.meta.env.VITE_API_URL}/auth/me`
-            );
+            const res = await authFetch(`${API}/auth/me`);
 
             if (!res.ok) {
               clearSession();
             } else {
               const data = await res.json();
+
               setIsLoggedIn(true);
               setCurrentUser(data.user);
-
-              const remaining =
-                SESSION_TIMEOUT - (now - Number(lastActivity));
-              timeoutRef.current = setTimeout(clearSession, remaining);
             }
           } catch {
             clearSession();
@@ -82,16 +90,19 @@ function App() {
       }
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api`);
+        const res = await fetch(`${API}/api`);
         const data = await res.json();
+
         setMessage(data.message);
         setDbTime(data.databaseTime);
       } catch {
-        setMessage("Failed to connect to backend");
+        setMessage("Backend connection failed");
       }
+
+      fetchBeans();
     };
 
-    initializeApp();
+    init();
 
     const events = ["mousemove", "keydown", "click", "scroll"];
 
@@ -104,7 +115,9 @@ function App() {
     events.forEach((e) => window.addEventListener(e, handleActivity));
 
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      events.forEach((e) =>
+        window.removeEventListener(e, handleActivity)
+      );
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
@@ -112,8 +125,8 @@ function App() {
   const handleLoginSuccess = (user) => {
     setIsLoggedIn(true);
     setCurrentUser(user);
-    localStorage.setItem("lastActivity", Date.now().toString());
     resetInactivityTimer();
+    fetchBeans();
   };
 
   const handleLogout = () => clearSession();
@@ -135,81 +148,81 @@ function App() {
   ];
 
   const renderMainContent = () => {
-    if (selectedModule === "farmers") {
-      return <FarmerManagement beans={beans} />;
-    }
+    switch (selectedModule) {
+      case "farmers":
+        return <FarmerManagement beans={beans} />;
 
-    if (selectedModule === "beans") {
-      return <BeanManagement beans={beans} setBeans={setBeans} />;
-    }
+      case "beans":
+        return (
+          <BeanManagement
+            beans={beans}
+            setBeans={setBeans}
+            refreshBeans={fetchBeans}
+          />
+        );
 
-    if (selectedModule === "admin") {
-      return <AdminPage />;
-    }
+      case "admin":
+        return <AdminPage />;
 
-    if (selectedModule === "delivery") {
-      return <DeliveryEntry />;
-    }
+      case "delivery":
+        return <DeliveryEntry />;
 
-    if (selectedModule === "forms") {
-      return <FormsGeneration />;
-    }
+      case "forms":
+        return <FormsGeneration />;
 
-    if (selectedModule === "reports") {
-      return <ReportModule />;
-    }
+      case "reports":
+        return <ReportModule />;
 
-    if (selectedModule === "transactions") {
-      return <TransactionHistory />;
-    }
+      case "transactions":
+        return <TransactionHistory />;
 
-    return (
-      <>
-        <div className="modules">
-          {modules.map((item) => (
-            <div
-              key={item}
-              className="module-card"
-              onClick={() => setSelectedModule(item)}
-              style={{ cursor: "pointer" }}
-            >
-              <div className="icon">📄</div>
-              <p>
-                {item === "admin"
-                  ? "Admin"
-                  : item === "farmers"
-                  ? "Farmer Management"
-                  : item === "beans"
-                  ? "Bean Management"
-                  : item === "delivery"
-                  ? "Delivery Entry"
-                  : item === "forms"
-                  ? "Forms Generation"
-                  : item === "reports"
-                  ? "Generate Reports"
-                  : item === "transactions"
-                  ? "Transaction History"
-                  : item}
-              </p>
+      default:
+        return (
+          <>
+            <div className="modules">
+              {modules.map((item) => (
+                <div
+                  key={item}
+                  className="module-card"
+                  onClick={() => setSelectedModule(item)}
+                >
+                  <div className="icon">📄</div>
+                  <p>
+                    {item === "admin"
+                      ? "Admin"
+                      : item === "farmers"
+                      ? "Farmer Management"
+                      : item === "beans"
+                      ? "Bean Management"
+                      : item === "delivery"
+                      ? "Delivery Entry"
+                      : item === "forms"
+                      ? "Forms Generation"
+                      : item === "reports"
+                      ? "Generate Reports"
+                      : "Transaction History"}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="status">
-          <p>{message}</p>
-          {dbTime && <p>Database time: {dbTime}</p>}
-          <p>Logged in as: {currentUser?.username}</p>
-        </div>
-      </>
-    );
+            <div className="status">
+              <p>{message}</p>
+              {dbTime && <p>Database time: {dbTime}</p>}
+              <p>Logged in as: {currentUser?.username}</p>
+            </div>
+          </>
+        );
+    }
   };
 
   return (
     <div className="app-layout">
+      {/* MAIN */}
       <div className="main">
         <div className="header">
           <div className="logo-container">
-            <img src={dtiLogo} alt="DTI Logo" className="main-logo" />
+            <img src={dtiLogo} className="main-logo" />
             <div>
               <h2 className="system-name">DTI Accounting System</h2>
               <p className="system-subtitle">
@@ -217,6 +230,7 @@ function App() {
               </p>
             </div>
           </div>
+
           <h1 className="title">Dashboard</h1>
         </div>
 
@@ -229,7 +243,7 @@ function App() {
         {renderMainContent()}
       </div>
 
-      {/* ✅ UPDATED SIDEBAR */}
+      {/* SIDEBAR (RESTORED FULLY) */}
       <div className="sidebar">
         <div className="profile-card">
           <div className="avatar">👤</div>

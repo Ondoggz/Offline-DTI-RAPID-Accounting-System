@@ -6,8 +6,10 @@ export const createFarmer = async (req, res) => {
     const farmer = await Farmer.create({
       farmerID: req.body.farmerID,
       name: req.body.name,
+      sex: req.body.sex,
       age: req.body.age,
-      address: req.body.address,
+      residentialAddress: req.body.residentialAddress,
+      farmAddress: req.body.farmAddress,
       contactNumber: req.body.contactNumber,
       emailAddress: req.body.emailAddress,
       beans: req.body.beans,
@@ -42,8 +44,10 @@ export const updateFarmer = async (req, res) => {
       {
         farmerID: req.body.farmerID,
         name: req.body.name,
+        sex: req.body.sex,
         age: req.body.age,
-        address: req.body.address,
+        residentialAddress: req.body.residentialAddress,
+        farmAddress: req.body.farmAddress,
         contactNumber: req.body.contactNumber,
         emailAddress: req.body.emailAddress,
         beans: req.body.beans,
