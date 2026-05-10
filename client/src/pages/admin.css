@@ -119,6 +119,18 @@
   color: #555;
 }
 
-.eye-btn:hover {
-  color: #000;
+.eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+
+  line-height: 1;     
+  padding: 0;           
 }
