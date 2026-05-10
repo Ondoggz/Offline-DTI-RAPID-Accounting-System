@@ -314,10 +314,6 @@ function FarmerManagement() {
             onChange={handleChange}
           />
 
-          <div style={bubbleStyle}>
-            Include middle name. Use N/A if none.
-          </div>
-
           {errors.name && (
             <div style={bubbleStyle}>
               {errors.name}
