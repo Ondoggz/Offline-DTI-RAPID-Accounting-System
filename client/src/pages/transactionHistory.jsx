@@ -5,9 +5,8 @@ function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [details, setDetails] = useState({});
-  const [amounts, setAmounts] = useState({}); // FIX: per-transaction input
+  const [amounts, setAmounts] = useState({});
 
-  // GET ALL TRANSACTIONS
   useEffect(() => {
     fetchTransactions();
   }, []);
@@ -20,7 +19,6 @@ function TransactionHistory() {
     setTransactions(data.data || []);
   };
 
-  // GET SINGLE TRANSACTION + PAYMENTS + SUMMARY
   const fetchDetails = async (id) => {
     try {
       const res = await authFetch(
@@ -37,41 +35,33 @@ function TransactionHistory() {
     }
   };
 
-  // TOGGLE DROPDOWN
   const toggle = (id) => {
     const newId = openId === id ? null : id;
     setOpenId(newId);
 
-    if (newId) {
-      fetchDetails(id); // load after opening
-    }
+    if (newId) fetchDetails(id);
   };
 
-  // ADD PAYMENT
   const addPayment = async (id) => {
-    const amount = amounts[id];
+    const amount = Number(amounts[id]);
 
-    if (!amount || Number(amount) <= 0) return;
+    if (!amount || amount <= 0) return;
 
-    await authFetch(
-      `${import.meta.env.VITE_API_URL}/api/payments`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deliveryId: id,
-          amountPaid: Number(amount),
-        }),
-      }
-    );
+    await authFetch(`${import.meta.env.VITE_API_URL}/api/payments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deliveryId: id,
+        amountPaid: amount,
+      }),
+    });
 
-    // reset input for that transaction only
     setAmounts((prev) => ({
       ...prev,
       [id]: "",
     }));
 
-    fetchDetails(id); // refresh
+    fetchDetails(id);
   };
 
   return (
@@ -106,7 +96,7 @@ function TransactionHistory() {
               <span>₱{t.amount}</span>
             </div>
 
-            {/* DROPDOWN (FIXED - NO BLOCKING CONDITION) */}
+            {/* DROPDOWN */}
             {openId === t._id && (
               <div style={{ marginTop: 10 }}>
                 <p>Bean: {t.beanType}</p>
@@ -114,7 +104,6 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* SUMMARY */}
                 {summary ? (
                   <>
                     <p>Total: ₱{t.amount}</p>
@@ -128,7 +117,6 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* PAYMENTS */}
                 <h4>Payments</h4>
 
                 {payments?.length > 0 ? (
@@ -141,9 +129,11 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* ADD PAYMENT */}
+                {/* PAYMENT INPUT (FIXED) */}
                 <input
                   type="number"
+                  min="0"
+                  step="0.01"
                   placeholder="Enter payment"
                   value={amounts[t._id] || ""}
                   onChange={(e) =>

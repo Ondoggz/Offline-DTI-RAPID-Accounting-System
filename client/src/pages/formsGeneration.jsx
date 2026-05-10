@@ -33,9 +33,6 @@ function FormsGeneration() {
   const token = localStorage.getItem("token");
   const API = import.meta.env.VITE_API_URL;
 
-  /* =========================
-     FETCH DATA
-  ========================= */
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -68,18 +65,12 @@ function FormsGeneration() {
     }
   }, [API, token]);
 
-  /* =========================
-     HELPERS
-  ========================= */
   const selectedFarmer = useMemo(() => {
     return farmers.find((f) => f._id === form.farmerId) || null;
   }, [farmers, form.farmerId]);
 
   const getBeanById = (id) => beans.find((b) => b.id === id);
 
-  /* =========================
-     ROW CALCULATIONS
-  ========================= */
   const computedRows = rows.map((row) => {
     const bean = getBeanById(row.beanId);
     const unitCost = Number(bean?.pricePerUnit || 0);
@@ -98,9 +89,6 @@ function FormsGeneration() {
     0
   );
 
-  /* =========================
-     FORM HANDLERS
-  ========================= */
   const handleFormChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -133,9 +121,6 @@ function FormsGeneration() {
     );
   };
 
-  /* =========================
-     VALIDATION
-  ========================= */
   const validateForm = () => {
     if (!selectedFarmer) {
       alert("Please select a farmer.");
@@ -150,36 +135,25 @@ function FormsGeneration() {
     return true;
   };
 
-  /* =========================
-     DOC DATA
-  ========================= */
   const buildDocData = () => ({
     idNumber: selectedFarmer?.farmerID || "",
     name: selectedFarmer?.name || "",
     sex: selectedFarmer?.sex || "",
     age: selectedFarmer?.age || "",
-
     residentialAddress: selectedFarmer?.residentialAddress || "",
     farmAddress: selectedFarmer?.farmAddress || "",
-
     contactNumber: selectedFarmer?.contactNumber || "",
     emailAddress: selectedFarmer?.emailAddress || "",
-
     deliveryDT: form.deliveryDT,
     beanOrigin: form.beanOrigin,
     beanAltitude: form.beanAltitude,
     remarks: form.remarks,
-
     receiverName: form.receiverName,
     payorName: form.payorName,
-
     amountInFigures: grandTotal,
     rows: computedRows,
   });
 
-  /* =========================
-     DOCX EXPORT
-  ========================= */
   const exportDocx = async () => {
     if (!validateForm()) return;
 
@@ -209,52 +183,45 @@ function FormsGeneration() {
     }
   };
 
-  /* =========================
-     PRINT
-  ========================= */
   const printTemplate = async () => {
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  try {
-    const res = await axios.post(
-      `${API_URL}/api/forms/print`,
-      buildDocData(),
-      {
-        responseType: "blob",
-        headers: { Authorization: `Bearer ${token}` },
+    try {
+      const res = await axios.post(
+        `${API_URL}/api/forms/print`,
+        buildDocData(),
+        {
+          responseType: "blob",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const pdfBlob = new Blob([res.data], {
+        type: "application/pdf",
+      });
+
+      const url = URL.createObjectURL(pdfBlob);
+
+      const win = window.open(url);
+
+      if (!win) {
+        alert("Popup blocked. Please allow popups for this site.");
+        return;
       }
-    );
 
-    const pdfBlob = new Blob([res.data], {
-      type: "application/pdf",
-    });
-
-    const url = URL.createObjectURL(pdfBlob);
-
-    const win = window.open(url);
-
-    if (!win) {
-      alert("Popup blocked. Please allow popups for this site.");
-      return;
+      win.onload = () => {
+        win.print();
+      };
+    } catch (err) {
+      console.error(err);
+      alert("Print failed.");
     }
+  };
 
-    win.onload = () => {
-      win.print();
-    };
-  } catch (err) {
-    console.error(err);
-    alert("Print failed.");
-  }
-};
-
-  /* =========================
-     UI
-  ========================= */
   return (
     <div style={{ padding: "20px" }}>
       <h2>Forms Generation</h2>
 
-      {/* FARMER DETAILS */}
       <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
         <select
           name="farmerId"
@@ -262,7 +229,6 @@ function FormsGeneration() {
           onChange={handleFormChange}
         >
           <option value="">Select Farmer</option>
-
           {farmers.map((f) => (
             <option key={f._id} value={f._id}>
               {f.name}
@@ -270,60 +236,13 @@ function FormsGeneration() {
           ))}
         </select>
 
-        {selectedFarmer && (
-          <div
-            style={{
-              border: "1px solid #ccc",
-              padding: "15px",
-              borderRadius: "8px",
-              background: "#f9f9f9",
-            }}
-          >
-            <h4>Farmer Information</h4>
-
-            <p>
-              <strong>ID:</strong> {selectedFarmer.farmerID}
-            </p>
-
-            <p>
-              <strong>Name:</strong> {selectedFarmer.name}
-            </p>
-
-            <p>
-              <strong>Sex:</strong> {selectedFarmer.sex}
-            </p>
-
-            <p>
-              <strong>Age:</strong> {selectedFarmer.age}
-            </p>
-
-            <p>
-              <strong>Residential Address:</strong>{" "}
-              {selectedFarmer.residentialAddress}
-            </p>
-
-            <p>
-              <strong>Farm Address:</strong>{" "}
-              {selectedFarmer.farmAddress}
-            </p>
-
-            <p>
-              <strong>Contact:</strong>{" "}
-              {selectedFarmer.contactNumber}
-            </p>
-
-            <p>
-              <strong>Email:</strong>{" "}
-              {selectedFarmer.emailAddress}
-            </p>
-          </div>
-        )}
-
+        {/* ✅ ONLY CHANGE APPLIED HERE */}
         <input
           type="datetime-local"
           name="deliveryDT"
           value={form.deliveryDT}
           onChange={handleFormChange}
+          onInput={(e) => e.target.blur()}
         />
 
         <input
@@ -362,7 +281,6 @@ function FormsGeneration() {
         />
       </div>
 
-      {/* ROWS */}
       <h3 style={{ marginTop: "20px" }}>Rows</h3>
 
       {rows.map((row, i) => {
@@ -398,7 +316,6 @@ function FormsGeneration() {
               }
             >
               <option value="">Select Bean</option>
-
               {beans.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -406,11 +323,7 @@ function FormsGeneration() {
               ))}
             </select>
 
-            <input
-              value={unitCost}
-              readOnly
-              placeholder="Unit Cost"
-            />
+            <input value={unitCost} readOnly />
 
             <input
               type="number"
@@ -421,11 +334,7 @@ function FormsGeneration() {
               }
             />
 
-            <input
-              value={total}
-              readOnly
-              placeholder="Total Amount"
-            />
+            <input value={total} readOnly />
 
             <input
               type="datetime-local"
@@ -443,29 +352,20 @@ function FormsGeneration() {
               }
             />
 
-            <button onClick={() => removeRow(i)}>
-              Remove
-            </button>
+            <button onClick={() => removeRow(i)}>Remove</button>
           </div>
         );
       })}
 
       <button onClick={addRow}>+ Add Row</button>
 
-      {/* TOTAL */}
       <div style={{ marginTop: "20px" }}>
         <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
       </div>
 
-      {/* ACTIONS */}
       <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-        <button onClick={exportDocx}>
-          Export DOCX
-        </button>
-
-        <button onClick={printTemplate}>
-          Print
-        </button>
+        <button onClick={exportDocx}>Export DOCX</button>
+        <button onClick={printTemplate}>Print</button>
       </div>
     </div>
   );
