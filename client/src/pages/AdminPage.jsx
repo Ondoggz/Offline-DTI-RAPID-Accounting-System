@@ -6,7 +6,6 @@ function AdminPage() {
   const [users, setUsers] = useState([]);
   const [showPasswords, setShowPasswords] = useState(false);
 
-  // ✅ NEW: password visibility toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -147,7 +146,7 @@ function AdminPage() {
           onChange={(e) => setForm({ ...form, username: e.target.value })}
         />
 
-        {/* PASSWORD FIELD */}
+        {/* PASSWORD */}
         <div className="password-field">
           <input
             type={showPassword ? "text" : "password"}
@@ -157,15 +156,16 @@ function AdminPage() {
               setForm({ ...form, password: e.target.value })
             }
           />
-          <span
-            className="eye"
+          <button
+            type="button"
+            className="eye-btn"
             onClick={() => setShowPassword(!showPassword)}
           >
-            {showPassword ? "🙈" : "👁️"}
-          </span>
+            {showPassword ? "Hide" : "Show"}
+          </button>
         </div>
 
-        {/* CONFIRM PASSWORD FIELD */}
+        {/* CONFIRM PASSWORD */}
         <div className="password-field">
           <input
             type={showConfirmPassword ? "text" : "password"}
@@ -175,14 +175,15 @@ function AdminPage() {
               setForm({ ...form, confirmPassword: e.target.value })
             }
           />
-          <span
-            className="eye"
+          <button
+            type="button"
+            className="eye-btn"
             onClick={() =>
               setShowConfirmPassword(!showConfirmPassword)
             }
           >
-            {showConfirmPassword ? "🙈" : "👁️"}
-          </span>
+            {showConfirmPassword ? "Hide" : "Show"}
+          </button>
         </div>
 
         <select
