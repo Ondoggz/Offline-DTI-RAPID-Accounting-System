@@ -33,9 +33,6 @@ function App() {
     },
   };
 
-  /* =========================
-     FETCH BEANS FROM BACKEND
-  ========================= */
   const fetchBeans = async () => {
     try {
       const res = await fetch(`${API}/api/beans`, authHeaders);

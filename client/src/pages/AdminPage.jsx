@@ -6,6 +6,10 @@ function AdminPage() {
   const [users, setUsers] = useState([]);
   const [showPasswords, setShowPasswords] = useState(false);
 
+  // ✅ NEW: password visibility toggles
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -89,6 +93,9 @@ function AdminPage() {
         role: "user",
       });
 
+      setShowPassword(false);
+      setShowConfirmPassword(false);
+
       fetchUsers();
     } catch (err) {
       console.error("CREATE USER ERROR:", err);
@@ -101,9 +108,10 @@ function AdminPage() {
       const confirmDelete = window.confirm("Delete this user?");
       if (!confirmDelete) return;
 
-      const res = await authFetch(`${import.meta.env.VITE_API_URL}/users/${id}`, {
-        method: "DELETE",
-      });
+      const res = await authFetch(
+        `${import.meta.env.VITE_API_URL}/users/${id}`,
+        { method: "DELETE" }
+      );
 
       const data = await res.json();
 
@@ -123,6 +131,7 @@ function AdminPage() {
     <div className="admin-container">
       <h1>Admin Panel</h1>
 
+      {/* CREATE USER */}
       <div className="admin-card">
         <h3>Create User</h3>
 
@@ -138,21 +147,43 @@ function AdminPage() {
           onChange={(e) => setForm({ ...form, username: e.target.value })}
         />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-        />
+        {/* PASSWORD FIELD */}
+        <div className="password-field">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={form.password}
+            onChange={(e) =>
+              setForm({ ...form, password: e.target.value })
+            }
+          />
+          <span
+            className="eye"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? "🙈" : "👁️"}
+          </span>
+        </div>
 
-        <input
-          type="password"
-          placeholder="Confirm Password"
-          value={form.confirmPassword}
-          onChange={(e) =>
-            setForm({ ...form, confirmPassword: e.target.value })
-          }
-        />
+        {/* CONFIRM PASSWORD FIELD */}
+        <div className="password-field">
+          <input
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="Confirm Password"
+            value={form.confirmPassword}
+            onChange={(e) =>
+              setForm({ ...form, confirmPassword: e.target.value })
+            }
+          />
+          <span
+            className="eye"
+            onClick={() =>
+              setShowConfirmPassword(!showConfirmPassword)
+            }
+          >
+            {showConfirmPassword ? "🙈" : "👁️"}
+          </span>
+        </div>
 
         <select
           value={form.sex}
@@ -189,6 +220,7 @@ function AdminPage() {
         </button>
       </div>
 
+      {/* USER LIST */}
       <div className="admin-card">
         <h3>User List</h3>
 
@@ -196,7 +228,9 @@ function AdminPage() {
           className="admin-btn"
           onClick={() => setShowPasswords(!showPasswords)}
         >
-          {showPasswords ? "Hide Hashed Passwords" : "Show Hashed Passwords"}
+          {showPasswords
+            ? "Hide Hashed Passwords"
+            : "Show Hashed Passwords"}
         </button>
 
         <div className="user-list">
@@ -219,7 +253,10 @@ function AdminPage() {
                 </small>
               </span>
 
-              <button className="delete-btn" onClick={() => deleteUser(u._id)}>
+              <button
+                className="delete-btn"
+                onClick={() => deleteUser(u._id)}
+              >
                 Delete
               </button>
             </div>

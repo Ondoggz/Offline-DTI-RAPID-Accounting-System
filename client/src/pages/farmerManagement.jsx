@@ -141,7 +141,7 @@ function FarmerManagement() {
 
       if (wordCount < 3) {
         newErrors.name =
-          "Include first name, middle name, and surname. Use N/A if none.";
+          "Include first name, middle name, and surname. Use N/A if no middle name.";
       }
     }
 
