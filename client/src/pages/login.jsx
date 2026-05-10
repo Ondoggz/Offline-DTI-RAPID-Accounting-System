@@ -22,22 +22,17 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
+      const data = await window.api.login(
+        form.username,
+        form.password
+      );
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      if (!data.success) {
         alert(data.message || "Login failed");
         return;
       }
 
-      localStorage.setItem("token", data.token);
+      localStorage.setItem("token", "offline-token");
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("lastActivity", Date.now().toString());
 

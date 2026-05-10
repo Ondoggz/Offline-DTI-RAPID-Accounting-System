@@ -1,0 +1,45 @@
+{
+  "name": "offline-dti-accounting-system",
+  "version": "1.0.0",
+  "description": "DTI Accounting System Desktop App",
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "electron .",
+    "build:client": "cd client && npx vite build",
+    "dist": "npm run build:client && electron-builder"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^42.0.0",
+    "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9",
+    "wait-on": "^9.0.5"
+  },
+  "build": {
+    "appId": "com.offline.dti.accounting",
+    "productName": "DTI Accounting System",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "client/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "electron/backend/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "dependencies": {
+    "smart-buffer": "^4.2.0",
+    "sql.js": "^1.14.1",
+    "uuid": "^14.0.0"
+  }
+}

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { authFetch } from "../utils/authFetch";
 import "./admin.css";
 
 function AdminPage() {
@@ -28,15 +27,8 @@ function AdminPage() {
 
   const fetchUsers = async () => {
     try {
-      const res = await authFetch(`${import.meta.env.VITE_API_URL}/users`);
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Failed to fetch users");
-        return;
-      }
-
-      setUsers(data.users || []);
+      const data = await window.api.getUsers();
+      setUsers(data || []);
     } catch (err) {
       console.error("FETCH USERS ERROR:", err);
     }
@@ -58,28 +50,16 @@ function AdminPage() {
         return;
       }
 
-      const res = await authFetch(`${import.meta.env.VITE_API_URL}/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: form.name,
-          username: form.username,
-          password: form.password,
-          sex: form.sex,
-          age: form.age ? Number(form.age) : null,
-          position: form.position,
-          role: form.role,
-        }),
+      await window.api.addUser({
+        id: Date.now().toString(),
+        name: form.name,
+        username: form.username,
+        password: form.password,
+        sex: form.sex,
+        age: form.age ? Number(form.age) : null,
+        position: form.position,
+        role: form.role,
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || data.error || "Failed to create user");
-        return;
-      }
 
       setForm({
         name: "",
@@ -107,18 +87,7 @@ function AdminPage() {
       const confirmDelete = window.confirm("Delete this user?");
       if (!confirmDelete) return;
 
-      const res = await authFetch(
-        `${import.meta.env.VITE_API_URL}/users/${id}`,
-        { method: "DELETE" }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || data.error || "Failed to delete user");
-        return;
-      }
-
+      await window.api.deleteUser(id);
       fetchUsers();
     } catch (err) {
       console.error("DELETE USER ERROR:", err);
@@ -146,7 +115,6 @@ function AdminPage() {
           onChange={(e) => setForm({ ...form, username: e.target.value })}
         />
 
-        {/* PASSWORD */}
         <div className="password-field">
           <input
             type={showPassword ? "text" : "password"}
@@ -156,16 +124,11 @@ function AdminPage() {
               setForm({ ...form, password: e.target.value })
             }
           />
-          <button
-            type="button"
-            className="eye-btn"
-            onClick={() => setShowPassword(!showPassword)}
-          >
+          <button onClick={() => setShowPassword(!showPassword)}>
             {showPassword ? "Hide" : "Show"}
           </button>
         </div>
 
-        {/* CONFIRM PASSWORD */}
         <div className="password-field">
           <input
             type={showConfirmPassword ? "text" : "password"}
@@ -176,8 +139,6 @@ function AdminPage() {
             }
           />
           <button
-            type="button"
-            className="eye-btn"
             onClick={() =>
               setShowConfirmPassword(!showConfirmPassword)
             }
@@ -216,27 +177,20 @@ function AdminPage() {
           <option value="admin">Admin</option>
         </select>
 
-        <button className="admin-btn" onClick={createUser}>
-          Create User
-        </button>
+        <button onClick={createUser}>Create User</button>
       </div>
 
       {/* USER LIST */}
       <div className="admin-card">
         <h3>User List</h3>
 
-        <button
-          className="admin-btn"
-          onClick={() => setShowPasswords(!showPasswords)}
-        >
-          {showPasswords
-            ? "Hide Hashed Passwords"
-            : "Show Hashed Passwords"}
+        <button onClick={() => setShowPasswords(!showPasswords)}>
+          {showPasswords ? "Hide Passwords" : "Show Passwords"}
         </button>
 
         <div className="user-list">
           {users.map((u) => (
-            <div key={u._id} className="user-item">
+            <div key={u.id} className="user-item">
               <span>
                 <strong>{u.name || u.username}</strong> — {u.role}
                 <br />
@@ -248,16 +202,13 @@ function AdminPage() {
                   {showPasswords && (
                     <>
                       <br />
-                      Hashed Password: {u.password || "Hidden / Not returned"}
+                      Password: {u.password}
                     </>
                   )}
                 </small>
               </span>
 
-              <button
-                className="delete-btn"
-                onClick={() => deleteUser(u._id)}
-              >
+              <button onClick={() => deleteUser(u.id)}>
                 Delete
               </button>
             </div>

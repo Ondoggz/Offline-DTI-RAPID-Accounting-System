@@ -1,0 +1,412 @@
+const initSqlJs = require("sql.js");
+const fs = require("fs");
+const path = require("path");
+
+let SQL;
+let db;
+
+const dbPath = path.join(__dirname, "local.sqlite");
+
+/* =========================
+   INIT DB
+========================= */
+async function initDB() {
+  SQL = await initSqlJs();
+
+  if (fs.existsSync(dbPath)) {
+    const fileBuffer = fs.readFileSync(dbPath);
+    db = new SQL.Database(fileBuffer);
+  } else {
+    db = new SQL.Database();
+    createTables();
+    saveDB();
+  }
+
+  seedAdminUser();
+}
+
+/* =========================
+   SAVE DB
+========================= */
+function saveDB() {
+  fs.writeFileSync(dbPath, Buffer.from(db.export()));
+}
+
+/* =========================
+   HELPERS
+========================= */
+function run(query, params = []) {
+  db.run(query, params);
+  saveDB();
+}
+
+function all(query, params = []) {
+  const stmt = db.prepare(query);
+  stmt.bind(params);
+
+  const rows = [];
+  while (stmt.step()) {
+    rows.push(stmt.getAsObject());
+  }
+
+  stmt.free();
+  return rows;
+}
+
+/* =========================
+   TABLES
+========================= */
+function createTables() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS beans (
+      id TEXT PRIMARY KEY,
+      beanName TEXT,
+      pricePerUnit REAL,
+      unit TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS deliveries (
+      id TEXT PRIMARY KEY,
+      farmer TEXT,
+      farmerContact TEXT,
+      beanType TEXT,
+      courier TEXT,
+      date TEXT,
+      deliveryGuy TEXT,
+      consignee TEXT,
+      deliveryGuyContact TEXT,
+      consigneeContact TEXT,
+      proofOfDelivery TEXT,
+      recordedBy TEXT,
+      volume REAL,
+      pricePerUnit REAL,
+      totalAmount REAL,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS farmers (
+      id TEXT PRIMARY KEY,
+      farmerID TEXT,
+      name TEXT,
+      sex TEXT,
+      age INTEGER,
+      residentialAddress TEXT,
+      farmAddress TEXT,
+      contactNumber TEXT,
+      emailAddress TEXT,
+      beans TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      deliveryId TEXT,
+      farmerName TEXT,
+      amountPaid REAL,
+      paymentMethod TEXT,
+      notes TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id TEXT PRIMARY KEY,
+      farmerName TEXT,
+      beanType TEXT,
+      volume REAL,
+      amount REAL,
+      date TEXT,
+      remarks TEXT,
+      createdBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE,
+      password TEXT,
+      role TEXT DEFAULT 'user',
+      name TEXT,
+      sex TEXT,
+      age INTEGER,
+      position TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  `);
+}
+
+/* =========================
+   BEANS
+========================= */
+function addBean(bean) {
+  const now = new Date().toISOString();
+
+  run(
+    `
+    INSERT INTO beans (id, beanName, pricePerUnit, unit, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      beanName = excluded.beanName,
+      pricePerUnit = excluded.pricePerUnit,
+      unit = excluded.unit,
+      updatedAt = excluded.updatedAt
+    `,
+    [
+      bean.id,
+      bean.beanName,
+      bean.pricePerUnit,
+      bean.unit || "kg",
+      now,
+      now,
+    ]
+  );
+}
+
+function getBeans() {
+  return all(`SELECT * FROM beans`);
+}
+
+function deleteBean(id) {
+  run(`DELETE FROM beans WHERE id = ?`, [id]);
+}
+
+/* =========================
+   FARMERS
+========================= */
+function addFarmer(f) {
+  const now = new Date().toISOString();
+
+  run(
+    `
+    INSERT INTO farmers VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      f.id,
+      f.farmerID,
+      f.name,
+      f.sex,
+      f.age,
+      f.residentialAddress,
+      f.farmAddress,
+      f.contactNumber,
+      f.emailAddress,
+      JSON.stringify(f.beans || []),
+      now,
+      now,
+    ]
+  );
+}
+
+function getFarmers() {
+  return all(`SELECT * FROM farmers`);
+}
+
+function deleteFarmer(id) {
+  run(`DELETE FROM farmers WHERE id = ?`, [id]);
+}
+
+/* =========================
+   DELIVERIES
+========================= */
+function addDelivery(d) {
+  const now = new Date().toISOString();
+  const total = (d.volume || 0) * (d.pricePerUnit || 0);
+
+  run(
+    `INSERT INTO deliveries VALUES (
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    )`,
+    [
+      d.id,
+      d.farmer,
+      d.farmerContact,
+      d.beanType,
+      d.courier,
+      d.date,
+      d.deliveryGuy,
+      d.consignee,
+      d.deliveryGuyContact,
+      d.consigneeContact,
+      d.proofOfDelivery,
+      d.recordedBy,
+      d.volume,
+      d.pricePerUnit,
+      total,
+      now,
+      now,
+    ]
+  );
+}
+
+function getDeliveries() {
+  return all(`SELECT * FROM deliveries`);
+}
+
+function deleteDelivery(id) {
+  run(`DELETE FROM deliveries WHERE id = ?`, [id]);
+}
+
+/* =========================
+   PAYMENTS
+========================= */
+function addPayment(p) {
+  const now = new Date().toISOString();
+
+  run(
+    `INSERT INTO payments VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      p.id,
+      p.deliveryId,
+      p.farmerName,
+      p.amountPaid,
+      p.paymentMethod || "Cash",
+      p.notes || "",
+      now,
+      now,
+    ]
+  );
+}
+
+function getPayments() {
+  return all(`SELECT * FROM payments`);
+}
+
+function deletePayment(id) {
+  run(`DELETE FROM payments WHERE id = ?`, [id]);
+}
+
+/* =========================
+   TRANSACTIONS
+========================= */
+function addTransaction(t) {
+  const now = new Date().toISOString();
+
+  run(
+    `INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      t.id,
+      t.farmerName,
+      t.beanType,
+      t.volume,
+      t.amount,
+      t.date || now,
+      t.remarks || "",
+      t.createdBy || "",
+      now,
+      now,
+    ]
+  );
+}
+
+function getTransactions() {
+  return all(`SELECT * FROM transactions`);
+}
+
+function deleteTransaction(id) {
+  run(`DELETE FROM transactions WHERE id = ?`, [id]);
+}
+
+/* =========================
+   USERS
+========================= */
+function addUser(u) {
+  const now = new Date().toISOString();
+
+  run(
+    `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      u.id,
+      u.username,
+      u.password,
+      u.role || "user",
+      u.name || "",
+      u.sex || "",
+      u.age || null,
+      u.position || "",
+      now,
+      now,
+    ]
+  );
+}
+
+function getUsers() {
+  return all(`SELECT * FROM users`);
+}
+
+function getUserByUsername(username) {
+  return all(`SELECT * FROM users WHERE username = ?`, [username]);
+}
+
+function deleteUser(id) {
+  run(`DELETE FROM users WHERE id = ?`, [id]);
+}
+
+/* =========================
+   SEED ADMIN
+========================= */
+function seedAdminUser() {
+  const users = getUsers();
+
+  if (users.length === 0) {
+    addUser({
+      id: "1",
+      username: "admin",
+      password: "admin123",
+      role: "admin",
+      name: "System Admin",
+      sex: "",
+      age: null,
+      position: "Administrator",
+    });
+
+    console.log("✅ Seed admin user created");
+  }
+}
+
+/* =========================
+   EXPORT
+========================= */
+module.exports = {
+  initDB,
+
+  addBean,
+  getBeans,
+  deleteBean,
+
+  addFarmer,
+  getFarmers,
+  deleteFarmer,
+
+  addDelivery,
+  getDeliveries,
+  deleteDelivery,
+
+  addPayment,
+  getPayments,
+  deletePayment,
+
+  addTransaction,
+  getTransactions,
+  deleteTransaction,
+
+  addUser,
+  getUsers,
+  getUserByUsername,
+  deleteUser,
+};

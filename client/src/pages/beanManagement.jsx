@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { authFetch } from "../utils/authFetch";
 
 function BeanManagement({ beans, setBeans }) {
   const [form, setForm] = useState({
@@ -11,15 +10,14 @@ function BeanManagement({ beans, setBeans }) {
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // 🔄 LOAD FROM BACKEND
+  // 🔄 LOAD FROM LOCAL SQLITE (IPC)
   useEffect(() => {
     const fetchBeans = async () => {
       try {
-        const res = await authFetch("/api/beans");
-        const data = await res.json();
+        const data = await window.api.getBeans();
 
         const mapped = data.map((bean) => ({
-          id: bean._id,
+          id: bean.id,
           name: bean.beanName,
           pricePerUnit: bean.pricePerUnit,
           unit: bean.unit,
@@ -28,7 +26,7 @@ function BeanManagement({ beans, setBeans }) {
 
         setBeans(mapped);
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load beans:", err);
       }
     };
 
@@ -52,7 +50,7 @@ function BeanManagement({ beans, setBeans }) {
     }));
   };
 
-  // 🔥 CREATE / UPDATE
+  // 🔥 CREATE / UPDATE (LOCAL IPC)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -62,6 +60,7 @@ function BeanManagement({ beans, setBeans }) {
     }
 
     const beanData = {
+      id: isEditing ? form.id : Date.now().toString(),
       beanName: form.name.trim(),
       pricePerUnit: Number(form.pricePerUnit),
       unit: form.unit.trim(),
@@ -69,24 +68,16 @@ function BeanManagement({ beans, setBeans }) {
 
     try {
       if (isEditing) {
-        await authFetch(`/api/beans/${form.id}`, {
-          method: "PUT",
-          body: JSON.stringify(beanData),
-        });
+        await window.api.addBean(beanData); // same function handles overwrite in your DB
       } else {
-        await authFetch("/api/beans", {
-          method: "POST",
-          body: JSON.stringify(beanData),
-        });
+        await window.api.addBean(beanData);
       }
 
-      // refresh
-      const res = await authFetch("/api/beans");
-      const data = await res.json();
+      const data = await window.api.getBeans();
 
       setBeans(
         data.map((bean) => ({
-          id: bean._id,
+          id: bean.id,
           name: bean.beanName,
           pricePerUnit: bean.pricePerUnit,
           unit: bean.unit,
@@ -96,7 +87,7 @@ function BeanManagement({ beans, setBeans }) {
 
       resetForm();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to save bean:", err);
     }
   };
 
@@ -110,21 +101,29 @@ function BeanManagement({ beans, setBeans }) {
     setIsEditing(true);
   };
 
-  // 🔥 DELETE
-  const handleDelete = async (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete this bean?");
-    if (!confirmed) return;
+  // 🔥 DELETE (LOCAL IPC - you will need db.deleteBean later)
+const handleDelete = async (id) => {
+  const confirmed = window.confirm("Are you sure you want to delete this bean?");
+  if (!confirmed) return;
 
-    try {
-      await authFetch(`/api/beans/${id}`, {
-        method: "DELETE",
-      });
+  try {
+    await window.api.deleteBean(id);
 
-      setBeans((prev) => prev.filter((bean) => bean.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    const updated = await window.api.getBeans();
+
+    setBeans(
+      updated.map((bean) => ({
+        id: bean.id,
+        name: bean.beanName,
+        pricePerUnit: bean.pricePerUnit,
+        unit: bean.unit,
+        farmers: bean.farmers || [],
+      }))
+    );
+  } catch (err) {
+    console.error("Delete failed:", err);
+  }
+};
 
   return (
     <div style={{ padding: "20px" }}>
