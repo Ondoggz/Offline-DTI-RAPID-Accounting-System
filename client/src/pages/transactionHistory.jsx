@@ -43,9 +43,19 @@ function TransactionHistory() {
   };
 
   const addPayment = async (id) => {
-    const amount = Number(amounts[id]);
+    const amount = Number(amounts[id] || 0);
+    const balance = Number(details[id]?.summary?.balance || 0);
 
-    if (!amount || amount <= 0) return;
+    // ✅ BLOCK INVALID INPUTS
+    if (amount <= 0) {
+      alert("Payment must be greater than 0");
+      return;
+    }
+
+    if (amount > balance) {
+      alert(`Payment exceeds remaining balance (₱${balance})`);
+      return;
+    }
 
     await authFetch(`${import.meta.env.VITE_API_URL}/api/payments`, {
       method: "POST",
@@ -72,6 +82,8 @@ function TransactionHistory() {
         const data = details[t._id];
         const summary = data?.summary;
         const payments = data?.payments;
+
+        const balance = summary?.balance || 0;
 
         return (
           <div
@@ -108,7 +120,7 @@ function TransactionHistory() {
                   <>
                     <p>Total: ₱{t.amount}</p>
                     <p>Paid: ₱{summary.totalPaid}</p>
-                    <p>Balance: ₱{summary.balance}</p>
+                    <p>Balance: ₱{balance}</p>
                     <p>Status: {summary.status}</p>
                   </>
                 ) : (
@@ -129,12 +141,12 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* PAYMENT INPUT (FIXED) */}
+                {/* PAYMENT INPUT */}
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="Enter payment"
+                  placeholder={`Enter payment (max ₱${balance})`}
                   value={amounts[t._id] || ""}
                   onChange={(e) =>
                     setAmounts((prev) => ({
