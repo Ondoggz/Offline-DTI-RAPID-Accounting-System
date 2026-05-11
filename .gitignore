@@ -55,4 +55,4 @@ build/
 *.db-journal
 *.sqlite-wal
 *.sqlite-shm
-*local.sqlite
+local.sqlite
