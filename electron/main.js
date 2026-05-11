@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const crypto = require("crypto"); // 🔥 FIX: missing in your code
+const crypto = require("crypto");
 const db = require("./db");
 
 let dbReady = false;
@@ -13,6 +13,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    show: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -22,21 +23,55 @@ function createWindow() {
 
   const isDev = !app.isPackaged;
 
-  mainWindow.loadURL(
-    isDev
-      ? "http://localhost:5173"
-      : `file://${path.join(__dirname, "../client/dist/index.html")}`
-  );
+  const devURL = "http://localhost:5173";
+
+  // ✅ FIXED PRODUCTION PATH (IMPORTANT FIX)
+  const prodURL = `file://${path.join(
+    process.resourcesPath,
+    "client/dist/index.html"
+  )}`;
+
+  const targetURL = isDev ? devURL : prodURL;
+
+  console.log("APP MODE:", isDev ? "DEV" : "PROD");
+  console.log("LOADING:", targetURL);
+
+  mainWindow.loadURL(targetURL);
+
+  // ✅ SAFE SHOW (DON'T RELY ONLY ON ready-to-show)
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  // ❌ DEBUG FAILURES (VERY IMPORTANT)
+  mainWindow.webContents.on("did-fail-load", (_, code, desc) => {
+    console.error("❌ LOAD FAILED:", code, desc);
+    mainWindow.show(); // force window visible for debugging
+  });
+
+  mainWindow.webContents.on("render-process-gone", (_, details) => {
+    console.error("❌ RENDER CRASHED:", details);
+  });
+
+  // optional devtools for debugging
+  // mainWindow.webContents.openDevTools();
 }
 
 /* =========================
    APP INIT
 ========================= */
 app.whenReady().then(async () => {
-  await db.initDB();
-  dbReady = true;
+  createWindow(); // always open window first
 
-  createWindow();
+  try {
+    console.log("INIT DB...");
+    await db.initDB();
+    dbReady = true;
+    console.log("DB READY");
+  } catch (err) {
+    console.error("🔥 DB FAILED:", err);
+  }
 });
 
 app.on("window-all-closed", () => {
@@ -44,14 +79,14 @@ app.on("window-all-closed", () => {
 });
 
 /* =========================
-   SAFE DB CHECK
+   DB SAFETY
 ========================= */
 function ensureDB() {
   if (!dbReady) throw new Error("Database not ready");
 }
 
 /* =========================
-   REALTIME UI SYNC
+   UI SYNC
 ========================= */
 function emitUpdate(channel) {
   if (mainWindow) {
@@ -60,8 +95,10 @@ function emitUpdate(channel) {
 }
 
 /* =========================
-   BEANS
+   IPC HANDLERS
 ========================= */
+
+// BEANS
 ipcMain.handle("bean:add", (_, data) => {
   ensureDB();
   const res = db.addBean(data);
@@ -81,9 +118,7 @@ ipcMain.handle("bean:delete", (_, id) => {
   return res;
 });
 
-/* =========================
-   FARMERS
-========================= */
+// FARMERS
 ipcMain.handle("farmer:add", (_, data) => {
   ensureDB();
   const res = db.addFarmer(data);
@@ -110,9 +145,7 @@ ipcMain.handle("farmer:delete", (_, id) => {
   return res;
 });
 
-/* =========================
-   DELIVERIES
-========================= */
+// DELIVERIES
 ipcMain.handle("delivery:add", (_, data) => {
   ensureDB();
   const res = db.addDelivery(data);
@@ -133,9 +166,7 @@ ipcMain.handle("delivery:delete", (_, payload) => {
 
   const { id, password } = payload || {};
 
-  if (!id) {
-    return { success: false, message: "Missing ID" };
-  }
+  if (!id) return { success: false, message: "Missing ID" };
 
   const ADMIN_PASSWORD = "admin123";
 
@@ -155,15 +186,13 @@ ipcMain.handle("delivery:delete", (_, payload) => {
   }
 });
 
-/* =========================
-   PAYMENTS
-========================= */
+// PAYMENTS
 ipcMain.handle("payment:add", (_, data) => {
   ensureDB();
 
   const enriched = {
     ...data,
-    id: crypto.randomUUID(), // 🔥 FIX: now works
+    id: crypto.randomUUID(),
   };
 
   const res = db.addPayment(enriched);
@@ -177,9 +206,7 @@ ipcMain.handle("payment:get", () => {
   return db.getPayments();
 });
 
-/* =========================
-   TRANSACTIONS
-========================= */
+// TRANSACTIONS
 ipcMain.handle("transaction:add", (_, data) => {
   ensureDB();
   const res = db.addTransaction(data);
@@ -192,9 +219,7 @@ ipcMain.handle("transaction:get", () => {
   return db.getTransactions();
 });
 
-/* =========================
-   USERS
-========================= */
+// USERS
 ipcMain.handle("user:add", (_, data) => {
   ensureDB();
   const res = db.addUser(data);
@@ -219,18 +244,14 @@ ipcMain.handle("user:delete", (_, id) => {
   return res;
 });
 
-/* =========================
-   AUTH
-========================= */
+// AUTH
 ipcMain.handle("user:login", (_, { username, password }) => {
   ensureDB();
 
   const users = db.getUserByUsername(username);
   const user = users[0];
 
-  if (!user) {
-    return { success: false, message: "User not found" };
-  }
+  if (!user) return { success: false, message: "User not found" };
 
   if (user.password !== password) {
     return { success: false, message: "Incorrect password" };
@@ -239,14 +260,10 @@ ipcMain.handle("user:login", (_, { username, password }) => {
   return { success: true, user };
 });
 
-/* =========================
-   PRINT FORM (OFFLINE)
-========================= */
+// PRINT
 ipcMain.handle("form:print", async (_, data) => {
   try {
-    const printWindow = new BrowserWindow({
-      show: false,
-    });
+    const printWindow = new BrowserWindow({ show: false });
 
     const html = `
       <html>
@@ -296,8 +313,7 @@ ipcMain.handle("form:print", async (_, data) => {
     });
 
     printWindow.close();
-
-    return pdf; // ✅ REQUIRED
+    return pdf;
   } catch (err) {
     console.error("PRINT ERROR:", err);
     throw err;

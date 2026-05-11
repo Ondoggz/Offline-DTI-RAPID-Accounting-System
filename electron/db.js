@@ -1,11 +1,36 @@
 const initSqlJs = require("sql.js");
 const fs = require("fs");
 const path = require("path");
+const { app } = require("electron"); // ✅ FIX ADDED
 
 let SQL;
 let db;
 
-const dbPath = path.join(__dirname, "local.sqlite");
+/* ⚠️ FIX: IMPORTANT FOR ELECTRON PACKAGING
+   __dirname breaks in production builds (asar/exe)
+*/
+const dbPath = app
+  ? path.join(app.getPath("userData"), "local.sqlite")
+  : path.join(__dirname, "local.sqlite");
+
+  function seedAdminUser() {
+  const users = getUsers();
+
+  if (users.length === 0) {
+    addUser({
+      id: "admin-1",
+      username: "admin",
+      password: "admin123",
+      role: "admin",
+      name: "Administrator",
+      sex: "",
+      age: null,
+      position: "System Admin",
+    });
+
+    console.log("🔥 Admin user created");
+  }
+}
 
 /* =========================
    INIT DB
@@ -167,14 +192,7 @@ function addBean(bean) {
       unit = excluded.unit,
       updatedAt = excluded.updatedAt
     `,
-    [
-      bean.id,
-      bean.beanName,
-      bean.pricePerUnit,
-      bean.unit || "kg",
-      now,
-      now,
-    ]
+    [bean.id, bean.beanName, bean.pricePerUnit, bean.unit || "kg", now, now]
   );
 }
 
@@ -195,18 +213,10 @@ function addFarmer(f) {
   run(
     `
     INSERT INTO farmers (
-      id,
-      farmerID,
-      name,
-      sex,
-      age,
-      residentialAddress,
-      farmAddress,
-      contactNumber,
-      emailAddress,
-      beans,
-      createdAt,
-      updatedAt
+      id, farmerID, name, sex, age,
+      residentialAddress, farmAddress,
+      contactNumber, emailAddress, beans,
+      createdAt, updatedAt
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
@@ -279,33 +289,6 @@ function deleteFarmer(id) {
 }
 
 /* =========================
-   TRANSACTIONS SYNC (NEW)
-========================= */
-function syncTransactionsFromDeliveries() {
-  run(`DELETE FROM transactions`);
-
-  const deliveries = getDeliveries();
-
-  deliveries.forEach((d) => {
-    run(
-      `INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        d.id,
-        d.farmer,
-        d.beanType,
-        d.volume,
-        d.totalAmount,
-        d.date,
-        "Auto-generated from delivery",
-        d.recordedBy,
-        new Date().toISOString(),
-        new Date().toISOString(),
-      ]
-    );
-  });
-}
-
-/* =========================
    DELIVERIES
 ========================= */
 function addDelivery(d) {
@@ -337,7 +320,7 @@ function addDelivery(d) {
     ]
   );
 
-  syncTransactionsFromDeliveries(); // 🔥 FIX
+  syncTransactionsFromDeliveries();
 }
 
 function getDeliveries() {
@@ -346,8 +329,34 @@ function getDeliveries() {
 
 function deleteDelivery(id) {
   run(`DELETE FROM deliveries WHERE id = ?`, [id]);
+  syncTransactionsFromDeliveries();
+}
 
-  syncTransactionsFromDeliveries(); // 🔥 FIX
+/* =========================
+   TRANSACTIONS SYNC
+========================= */
+function syncTransactionsFromDeliveries() {
+  run(`DELETE FROM transactions`);
+
+  const deliveries = getDeliveries();
+
+  deliveries.forEach((d) => {
+    run(
+      `INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        d.id,
+        d.farmer,
+        d.beanType,
+        d.volume,
+        d.totalAmount,
+        d.date,
+        "Auto-generated from delivery",
+        d.recordedBy,
+        new Date().toISOString(),
+        new Date().toISOString(),
+      ]
+    );
+  });
 }
 
 /* =========================
@@ -357,7 +366,7 @@ function addPayment(p) {
   const now = new Date().toISOString();
 
   const payment = {
-    id: p.id || crypto.randomUUID?.() || String(Date.now()),
+    id: p.id || String(Date.now()),
     deliveryId: p.deliveryId || "",
     farmerName: p.farmerName || "",
     amountPaid: Number(p.amountPaid || 0),
@@ -381,6 +390,7 @@ function addPayment(p) {
     ]
   );
 }
+
 function getPayments() {
   return all(`SELECT * FROM payments`);
 }
@@ -448,52 +458,24 @@ function deleteUser(id) {
 }
 
 /* =========================
-   SEED ADMIN
-========================= */
-function seedAdminUser() {
-  const users = getUsers();
-
-  if (users.length === 0) {
-    addUser({
-      id: "1",
-      username: "admin",
-      password: "admin123",
-      role: "admin",
-      name: "System Admin",
-      sex: "",
-      age: null,
-      position: "Administrator",
-    });
-
-    console.log("✅ Seed admin user created");
-  }
-}
-
-/* =========================
    EXPORT
 ========================= */
 module.exports = {
   initDB,
-
   addBean,
   getBeans,
   deleteBean,
-
   addFarmer,
   getFarmers,
   updateFarmer,
   deleteFarmer,
-
   addDelivery,
   getDeliveries,
   deleteDelivery,
-
   addPayment,
   getPayments,
-
   addTransaction,
   getTransactions,
-
   addUser,
   getUsers,
   getUserByUsername,

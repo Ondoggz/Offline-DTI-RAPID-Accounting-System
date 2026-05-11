@@ -164,7 +164,9 @@ function FormsGeneration() {
     if (!validateForm()) return;
 
     try {
-      const response = await fetch("/templates/Sample_Palamboon.docx");
+const response = await fetch(
+        window.location.origin + "/templates/Sample_Palamboon.docx"
+      );
       const content = await response.arrayBuffer();
 
       const zip = new PizZip(content);

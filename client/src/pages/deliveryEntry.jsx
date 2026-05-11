@@ -328,10 +328,28 @@ function DeliveryEntry() {
           </div>
 
           <div className="form-group">
+          <label>Delivery Guy Contact</label>
+          <input
+            name="deliveryGuyContact"
+            value={form.deliveryGuyContact}
+            onChange={handleChange}
+          />
+        </div>
+
+          <div className="form-group">
             <label>Consignee</label>
             <input
               name="consignee"
               value={form.consignee}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Consignee Contact</label>
+            <input
+              name="consigneeContact"
+              value={form.consigneeContact}
               onChange={handleChange}
             />
           </div>

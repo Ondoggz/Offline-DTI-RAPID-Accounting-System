@@ -41,7 +41,7 @@ mongo_data/
 # --- Electron build artifacts ---
 out/
 release/
-dist-electron/
+dist_electron/
 app/dist/
 electron/dist/
 dist/
