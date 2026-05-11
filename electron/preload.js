@@ -21,7 +21,8 @@ deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
   ========================= */
   addDelivery: (data) => ipcRenderer.invoke("delivery:add", data),
   getDeliveries: () => ipcRenderer.invoke("delivery:get"),
-
+ deleteDelivery: (id, password) =>
+  ipcRenderer.invoke("delivery:delete", { id, password }),
   /* =========================
      PAYMENTS
   ========================= */

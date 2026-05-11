@@ -94,6 +94,34 @@ ipcMain.handle("delivery:get", () => {
   return db.getDeliveries();
 });
 
+ipcMain.handle("delivery:delete", (_, payload) => {
+  ensureDB();
+
+  console.log("RAW DELETE PAYLOAD:", payload);
+
+  const { id, password } = payload || {};
+
+  if (!id) {
+    return { success: false, message: "Missing ID" };
+  }
+
+  const ADMIN_PASSWORD = "admin123";
+
+  if (password !== ADMIN_PASSWORD) {
+    return { success: false, message: "Wrong password" };
+  }
+
+  try {
+    db.deleteDelivery(id);
+    console.log("DELETED FROM DB:", id);
+
+    return { success: true };
+  } catch (err) {
+    console.error("DB DELETE ERROR:", err);
+    return { success: false, message: "DB error" };
+  }
+});
+
 /* =========================
    PAYMENTS
 ========================= */
