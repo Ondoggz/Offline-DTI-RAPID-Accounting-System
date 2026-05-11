@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { authFetch } from "../utils/authFetch";
 
 function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);
@@ -7,46 +6,70 @@ function TransactionHistory() {
   const [details, setDetails] = useState({});
   const [amounts, setAmounts] = useState({});
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
+  /* =========================
+     LOAD OFFLINE DATA
+  ========================= */
   const fetchTransactions = async () => {
-    const res = await authFetch(
-      `${import.meta.env.VITE_API_URL}/api/transactions`
-    );
-    const data = await res.json();
-    setTransactions(data.data || []);
-  };
-
-  const fetchDetails = async (id) => {
     try {
-      const res = await authFetch(
-        `${import.meta.env.VITE_API_URL}/api/transactions/${id}`
-      );
-      const data = await res.json();
+      const deliveries = await window.api.getDeliveries();
+      const payments = await window.api.getPayments();
 
-      setDetails((prev) => ({
-        ...prev,
-        [id]: data,
-      }));
+      const safeDeliveries = deliveries || [];
+      const safePayments = payments || [];
+
+      setTransactions(safeDeliveries);
+
+      // build details per transaction
+      const detailMap = {};
+
+      safeDeliveries.forEach((t) => {
+        const relatedPayments = safePayments.filter(
+          (p) => String(p.deliveryId) === String(t.id)
+        );
+
+        const totalPaid = relatedPayments.reduce(
+          (sum, p) => sum + Number(p.amountPaid || 0),
+          0
+        );
+
+        const balance = Number(t.totalAmount || 0) - totalPaid;
+
+        detailMap[t.id] = {
+          summary: {
+            totalPaid,
+            balance,
+            status: balance <= 0 ? "PAID" : "PENDING",
+          },
+          payments: relatedPayments,
+        };
+      });
+
+      setDetails(detailMap);
     } catch (err) {
-      console.error("Error fetching details:", err);
+      console.error("Transaction load error:", err);
     }
   };
 
-  const toggle = (id) => {
-    const newId = openId === id ? null : id;
-    setOpenId(newId);
+  useEffect(() => {
+    fetchTransactions();
 
-    if (newId) fetchDetails(id);
+    // 🔥 auto refresh (so it updates when deliveries change)
+    const interval = setInterval(fetchTransactions, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggle = (id) => {
+    setOpenId((prev) => (prev === id ? null : id));
   };
 
+  /* =========================
+     ADD PAYMENT (OFFLINE)
+  ========================= */
   const addPayment = async (id) => {
     const amount = Number(amounts[id] || 0);
     const balance = Number(details[id]?.summary?.balance || 0);
 
-    // ✅ BLOCK INVALID INPUTS
     if (amount <= 0) {
       alert("Payment must be greater than 0");
       return;
@@ -57,37 +80,35 @@ function TransactionHistory() {
       return;
     }
 
-    await authFetch(`${import.meta.env.VITE_API_URL}/api/payments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      await window.api.addPayment({
         deliveryId: id,
         amountPaid: amount,
-      }),
-    });
+      });
 
-    setAmounts((prev) => ({
-      ...prev,
-      [id]: "",
-    }));
+      setAmounts((prev) => ({
+        ...prev,
+        [id]: "",
+      }));
 
-    fetchDetails(id);
+      fetchTransactions();
+    } catch (err) {
+      console.error("Payment error:", err);
+    }
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Transactions</h2>
+      <h2>Transactions (Offline)</h2>
 
       {transactions.map((t) => {
-        const data = details[t._id];
+        const data = details[t.id];
         const summary = data?.summary;
         const payments = data?.payments;
 
-        const balance = summary?.balance || 0;
-
         return (
           <div
-            key={t._id}
+            key={t.id}
             style={{
               border: "1px solid #ddd",
               marginBottom: 10,
@@ -97,34 +118,34 @@ function TransactionHistory() {
           >
             {/* HEADER */}
             <div
-              onClick={() => toggle(t._id)}
+              onClick={() => toggle(t.id)}
               style={{
                 cursor: "pointer",
                 display: "flex",
                 justifyContent: "space-between",
               }}
             >
-              <strong>{t.farmerName}</strong>
-              <span>₱{t.amount}</span>
+              <strong>{t.farmer}</strong>
+              <span>₱{t.totalAmount}</span>
             </div>
 
             {/* DROPDOWN */}
-            {openId === t._id && (
+            {openId === t.id && (
               <div style={{ marginTop: 10 }}>
                 <p>Bean: {t.beanType}</p>
-                <p>Date: {new Date(t.date).toLocaleDateString()}</p>
+                <p>Date: {t.date?.slice(0, 10)}</p>
 
                 <hr />
 
                 {summary ? (
                   <>
-                    <p>Total: ₱{t.amount}</p>
+                    <p>Total: ₱{t.totalAmount}</p>
                     <p>Paid: ₱{summary.totalPaid}</p>
-                    <p>Balance: ₱{balance}</p>
+                    <p>Balance: ₱{summary.balance}</p>
                     <p>Status: {summary.status}</p>
                   </>
                 ) : (
-                  <p>Loading summary...</p>
+                  <p>Loading...</p>
                 )}
 
                 <hr />
@@ -132,8 +153,8 @@ function TransactionHistory() {
                 <h4>Payments</h4>
 
                 {payments?.length > 0 ? (
-                  payments.map((p) => (
-                    <p key={p._id}>₱{p.amountPaid}</p>
+                  payments.map((p, i) => (
+                    <p key={i}>₱{p.amountPaid}</p>
                   ))
                 ) : (
                   <p>No payments yet</p>
@@ -144,20 +165,18 @@ function TransactionHistory() {
                 {/* PAYMENT INPUT */}
                 <input
                   type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder={`Enter payment (max ₱${balance})`}
-                  value={amounts[t._id] || ""}
+                  placeholder="Enter payment"
+                  value={amounts[t.id] || ""}
                   onChange={(e) =>
                     setAmounts((prev) => ({
                       ...prev,
-                      [t._id]: e.target.value,
+                      [t.id]: e.target.value,
                     }))
                   }
                 />
 
                 <button
-                  onClick={() => addPayment(t._id)}
+                  onClick={() => addPayment(t.id)}
                   style={{ marginLeft: 10 }}
                 >
                   Add Payment

@@ -13,27 +13,24 @@ contextBridge.exposeInMainWorld("api", {
   ========================= */
   addFarmer: (data) => ipcRenderer.invoke("farmer:add", data),
   getFarmers: () => ipcRenderer.invoke("farmer:get"),
-updateFarmer: (id, data) => ipcRenderer.invoke("farmer:update", { id, data }),
-deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
+  updateFarmer: (id, data) =>
+    ipcRenderer.invoke("farmer:update", { id, data }),
+  deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
 
   /* =========================
      DELIVERIES
   ========================= */
   addDelivery: (data) => ipcRenderer.invoke("delivery:add", data),
   getDeliveries: () => ipcRenderer.invoke("delivery:get"),
- deleteDelivery: (id, password) =>
-  ipcRenderer.invoke("delivery:delete", { id, password }),
+
+  deleteDelivery: (id, password) =>
+    ipcRenderer.invoke("delivery:delete", { id, password }),
+
   /* =========================
      PAYMENTS
   ========================= */
   addPayment: (data) => ipcRenderer.invoke("payment:add", data),
   getPayments: () => ipcRenderer.invoke("payment:get"),
-
-  /* =========================
-     TRANSACTIONS
-  ========================= */
-  addTransaction: (data) =>
-    ipcRenderer.invoke("transaction:add", data),
 
   getTransactions: () =>
     ipcRenderer.invoke("transaction:get"),
@@ -42,17 +39,12 @@ deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
      USERS
   ========================= */
   addUser: (data) => ipcRenderer.invoke("user:add", data),
-
   getUsers: () => ipcRenderer.invoke("user:get"),
-
-  findUser: (username) =>
-    ipcRenderer.invoke("user:find", username),
-
-  deleteUser: (id) =>
-    ipcRenderer.invoke("user:delete", id),
+  findUser: (username) => ipcRenderer.invoke("user:find", username),
+  deleteUser: (id) => ipcRenderer.invoke("user:delete", id),
 
   /* =========================
-     AUTH (LOGIN)
+     AUTH
   ========================= */
   login: (username, password) =>
     ipcRenderer.invoke("user:login", { username, password }),

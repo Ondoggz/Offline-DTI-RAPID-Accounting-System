@@ -4,8 +4,10 @@ const db = require("./db");
 
 let dbReady = false;
 
+let mainWindow = null;
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     webPreferences: {
@@ -17,7 +19,7 @@ function createWindow() {
 
   const isDev = !app.isPackaged;
 
-  win.loadURL(
+  mainWindow.loadURL(
     isDev
       ? "http://localhost:5173"
       : `file://${path.join(__dirname, "../client/dist/index.html")}`
@@ -46,11 +48,22 @@ function ensureDB() {
 }
 
 /* =========================
+   HELPER: EMIT UPDATE
+========================= */
+function emitUpdate(channel) {
+  if (mainWindow) {
+    mainWindow.webContents.send(channel);
+  }
+}
+
+/* =========================
    BEANS
 ========================= */
 ipcMain.handle("bean:add", (_, data) => {
   ensureDB();
-  return db.addBean(data);
+  const res = db.addBean(data);
+  emitUpdate("beans:updated");
+  return res;
 });
 
 ipcMain.handle("bean:get", () => {
@@ -58,14 +71,21 @@ ipcMain.handle("bean:get", () => {
   return db.getBeans();
 });
 
-ipcMain.handle("bean:delete", (_, id) => db.deleteBean(id));
+ipcMain.handle("bean:delete", (_, id) => {
+  ensureDB();
+  const res = db.deleteBean(id);
+  emitUpdate("beans:updated");
+  return res;
+});
 
 /* =========================
    FARMERS
 ========================= */
 ipcMain.handle("farmer:add", (_, data) => {
   ensureDB();
-  return db.addFarmer(data);
+  const res = db.addFarmer(data);
+  emitUpdate("farmers:updated");
+  return res;
 });
 
 ipcMain.handle("farmer:get", () => {
@@ -74,11 +94,17 @@ ipcMain.handle("farmer:get", () => {
 });
 
 ipcMain.handle("farmer:update", (_, { id, data }) => {
-  return db.updateFarmer(id, data);
+  ensureDB();
+  const res = db.updateFarmer(id, data);
+  emitUpdate("farmers:updated");
+  return res;
 });
 
 ipcMain.handle("farmer:delete", (_, id) => {
-  return db.deleteFarmer(id);
+  ensureDB();
+  const res = db.deleteFarmer(id);
+  emitUpdate("farmers:updated");
+  return res;
 });
 
 /* =========================
@@ -86,7 +112,12 @@ ipcMain.handle("farmer:delete", (_, id) => {
 ========================= */
 ipcMain.handle("delivery:add", (_, data) => {
   ensureDB();
-  return db.addDelivery(data);
+  const res = db.addDelivery(data);
+
+  emitUpdate("deliveries:updated");
+  emitUpdate("transactions:updated"); // 🔥 important for your history
+
+  return res;
 });
 
 ipcMain.handle("delivery:get", () => {
@@ -96,8 +127,6 @@ ipcMain.handle("delivery:get", () => {
 
 ipcMain.handle("delivery:delete", (_, payload) => {
   ensureDB();
-
-  console.log("RAW DELETE PAYLOAD:", payload);
 
   const { id, password } = payload || {};
 
@@ -112,12 +141,13 @@ ipcMain.handle("delivery:delete", (_, payload) => {
   }
 
   try {
-    db.deleteDelivery(id);
-    console.log("DELETED FROM DB:", id);
+    const res = db.deleteDelivery(id);
+
+    emitUpdate("deliveries:updated");
+    emitUpdate("transactions:updated"); // 🔥 sync UI
 
     return { success: true };
   } catch (err) {
-    console.error("DB DELETE ERROR:", err);
     return { success: false, message: "DB error" };
   }
 });
@@ -127,7 +157,13 @@ ipcMain.handle("delivery:delete", (_, payload) => {
 ========================= */
 ipcMain.handle("payment:add", (_, data) => {
   ensureDB();
-  return db.addPayment(data);
+
+  const enriched = {
+    ...data,
+    id: crypto.randomUUID(),
+  };
+
+  return db.addPayment(enriched);
 });
 
 ipcMain.handle("payment:get", () => {
@@ -172,7 +208,7 @@ ipcMain.handle("user:delete", (_, id) => {
 });
 
 /* =========================
-   AUTH (LOGIN)
+   AUTH
 ========================= */
 ipcMain.handle("user:login", (_, { username, password }) => {
   ensureDB();

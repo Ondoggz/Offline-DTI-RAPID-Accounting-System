@@ -279,6 +279,33 @@ function deleteFarmer(id) {
 }
 
 /* =========================
+   TRANSACTIONS SYNC (NEW)
+========================= */
+function syncTransactionsFromDeliveries() {
+  run(`DELETE FROM transactions`);
+
+  const deliveries = getDeliveries();
+
+  deliveries.forEach((d) => {
+    run(
+      `INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        d.id,
+        d.farmer,
+        d.beanType,
+        d.volume,
+        d.totalAmount,
+        d.date,
+        "Auto-generated from delivery",
+        d.recordedBy,
+        new Date().toISOString(),
+        new Date().toISOString(),
+      ]
+    );
+  });
+}
+
+/* =========================
    DELIVERIES
 ========================= */
 function addDelivery(d) {
@@ -309,6 +336,8 @@ function addDelivery(d) {
       now,
     ]
   );
+
+  syncTransactionsFromDeliveries(); // 🔥 FIX
 }
 
 function getDeliveries() {
@@ -317,6 +346,8 @@ function getDeliveries() {
 
 function deleteDelivery(id) {
   run(`DELETE FROM deliveries WHERE id = ?`, [id]);
+
+  syncTransactionsFromDeliveries(); // 🔥 FIX
 }
 
 /* =========================
@@ -325,27 +356,33 @@ function deleteDelivery(id) {
 function addPayment(p) {
   const now = new Date().toISOString();
 
+  const payment = {
+    id: p.id || crypto.randomUUID?.() || String(Date.now()),
+    deliveryId: p.deliveryId || "",
+    farmerName: p.farmerName || "",
+    amountPaid: Number(p.amountPaid || 0),
+    paymentMethod: p.paymentMethod || "Cash",
+    notes: p.notes || "",
+    createdAt: now,
+    updatedAt: now,
+  };
+
   run(
     `INSERT INTO payments VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      p.id,
-      p.deliveryId,
-      p.farmerName,
-      p.amountPaid,
-      p.paymentMethod || "Cash",
-      p.notes || "",
-      now,
-      now,
+      payment.id,
+      payment.deliveryId,
+      payment.farmerName,
+      payment.amountPaid,
+      payment.paymentMethod,
+      payment.notes,
+      payment.createdAt,
+      payment.updatedAt,
     ]
   );
 }
-
 function getPayments() {
   return all(`SELECT * FROM payments`);
-}
-
-function deletePayment(id) {
-  run(`DELETE FROM payments WHERE id = ?`, [id]);
 }
 
 /* =========================
@@ -373,10 +410,6 @@ function addTransaction(t) {
 
 function getTransactions() {
   return all(`SELECT * FROM transactions`);
-}
-
-function deleteTransaction(id) {
-  run(`DELETE FROM transactions WHERE id = ?`, [id]);
 }
 
 /* =========================
@@ -457,11 +490,9 @@ module.exports = {
 
   addPayment,
   getPayments,
-  deletePayment,
 
   addTransaction,
   getTransactions,
-  deleteTransaction,
 
   addUser,
   getUsers,
