@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld("api", {
   addDelivery: (data) => ipcRenderer.invoke("delivery:add", data),
   getDeliveries: () => ipcRenderer.invoke("delivery:get"),
 
+  // FIXED: matches your main.js expectation (payload object)
   deleteDelivery: (id, password) =>
     ipcRenderer.invoke("delivery:delete", { id, password }),
 
@@ -32,8 +33,10 @@ contextBridge.exposeInMainWorld("api", {
   addPayment: (data) => ipcRenderer.invoke("payment:add", data),
   getPayments: () => ipcRenderer.invoke("payment:get"),
 
-  getTransactions: () =>
-    ipcRenderer.invoke("transaction:get"),
+  /* =========================
+     TRANSACTIONS
+  ========================= */
+  getTransactions: () => ipcRenderer.invoke("transaction:get"),
 
   /* =========================
      USERS
@@ -48,4 +51,11 @@ contextBridge.exposeInMainWorld("api", {
   ========================= */
   login: (username, password) =>
     ipcRenderer.invoke("user:login", { username, password }),
+
+  /* =========================
+     OPTIONAL (RECOMMENDED ADDITION)
+     FOR REPORT / PDF PRINTING
+  ========================= */
+
+  printForm: (data) => ipcRenderer.invoke("form:print", data),
 });

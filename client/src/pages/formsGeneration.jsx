@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { saveAs } from "file-saver";
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 function FormsGeneration() {
   const [farmers, setFarmers] = useState([]);
@@ -30,46 +27,53 @@ function FormsGeneration() {
     },
   ]);
 
-  const token = localStorage.getItem("token");
-  const API = import.meta.env.VITE_API_URL;
-
+  /* =========================
+     OFFLINE LOAD (ELECTRON IPC)
+  ========================= */
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [farmersRes, beansRes] = await Promise.all([
-          axios.get(`${API_URL}/api/farmers`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${API_URL}/api/beans`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const farmersRes = await window.api.getFarmers();
+        const beansRes = await window.api.getBeans();
 
-        setFarmers(farmersRes.data || []);
+        // ✅ normalize farmer IDs
+        setFarmers(
+          (farmersRes || []).map((f) => ({
+            ...f,
+            id: String(f.id),
+          }))
+        );
 
+        // ✅ fix bean IDs
         setBeans(
-          (beansRes.data || []).map((bean) => ({
-            id: bean._id,
+          (beansRes || []).map((bean) => ({
+            id: String(bean.id),
             name: bean.beanName,
-            pricePerUnit: bean.pricePerUnit,
+            pricePerUnit: Number(bean.pricePerUnit) || 0,
             unit: bean.unit,
           }))
         );
       } catch (err) {
-        console.error("Fetch error:", err);
+        console.error("Offline fetch error:", err);
       }
     };
 
-    if (API && token) {
-      fetchData();
-    }
-  }, [API, token]);
+    fetchData();
+  }, []);
 
+  /* =========================
+     FIXED LOOKUPS
+  ========================= */
   const selectedFarmer = useMemo(() => {
-    return farmers.find((f) => f._id === form.farmerId) || null;
+    return (
+      farmers.find(
+        (f) => String(f.id) === String(form.farmerId)
+      ) || null
+    );
   }, [farmers, form.farmerId]);
 
-  const getBeanById = (id) => beans.find((b) => b.id === id);
+  const getBeanById = (id) =>
+    beans.find((b) => String(b.id) === String(id));
 
   const computedRows = rows.map((row) => {
     const bean = getBeanById(row.beanId);
@@ -98,7 +102,9 @@ function FormsGeneration() {
 
   const handleRowChange = (index, field, value) => {
     setRows((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
+      prev.map((r, i) =>
+        i === index ? { ...r, [field]: value } : r
+      )
     );
   };
 
@@ -187,25 +193,18 @@ function FormsGeneration() {
     if (!validateForm()) return;
 
     try {
-      const res = await axios.post(
-        `${API_URL}/api/forms/print`,
-        buildDocData(),
-        {
-          responseType: "blob",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const pdfBuffer = await window.api.printForm(buildDocData());
 
-      const pdfBlob = new Blob([res.data], {
+      const blob = new Blob([pdfBuffer], {
         type: "application/pdf",
       });
 
-      const url = URL.createObjectURL(pdfBlob);
+      const url = URL.createObjectURL(blob);
 
       const win = window.open(url);
 
       if (!win) {
-        alert("Popup blocked. Please allow popups for this site.");
+        alert("Popup blocked. Please allow popups.");
         return;
       }
 
@@ -214,13 +213,13 @@ function FormsGeneration() {
       };
     } catch (err) {
       console.error(err);
-      alert("Print failed.");
+      alert("Print failed (offline backend).");
     }
   };
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Forms Generation</h2>
+      <h2>Forms Generation (Offline Electron Mode)</h2>
 
       <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
         <select
@@ -230,13 +229,12 @@ function FormsGeneration() {
         >
           <option value="">Select Farmer</option>
           {farmers.map((f) => (
-            <option key={f._id} value={f._id}>
+            <option key={f.id} value={f.id}>
               {f.name}
             </option>
           ))}
         </select>
 
-        {/* ✅ ONLY CHANGE APPLIED HERE */}
         <input
           type="datetime-local"
           name="deliveryDT"
@@ -245,40 +243,11 @@ function FormsGeneration() {
           onInput={(e) => e.target.blur()}
         />
 
-        <input
-          name="beanOrigin"
-          placeholder="Bean Origin"
-          value={form.beanOrigin}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="beanAltitude"
-          placeholder="Bean Altitude"
-          value={form.beanAltitude}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="remarks"
-          placeholder="Remarks"
-          value={form.remarks}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="receiverName"
-          placeholder="Receiver Name"
-          value={form.receiverName}
-          onChange={handleFormChange}
-        />
-
-        <input
-          name="payorName"
-          placeholder="Payor Name"
-          value={form.payorName}
-          onChange={handleFormChange}
-        />
+        <input name="beanOrigin" placeholder="Bean Origin" value={form.beanOrigin} onChange={handleFormChange} />
+        <input name="beanAltitude" placeholder="Bean Altitude" value={form.beanAltitude} onChange={handleFormChange} />
+        <input name="remarks" placeholder="Remarks" value={form.remarks} onChange={handleFormChange} />
+        <input name="receiverName" placeholder="Receiver Name" value={form.receiverName} onChange={handleFormChange} />
+        <input name="payorName" placeholder="Payor Name" value={form.payorName} onChange={handleFormChange} />
       </div>
 
       <h3 style={{ marginTop: "20px" }}>Rows</h3>
@@ -289,32 +258,12 @@ function FormsGeneration() {
         const total = unitCost * (row.volume || 0);
 
         return (
-          <div
-            key={i}
-            style={{
-              border: "1px solid #ccc",
-              padding: "10px",
-              marginBottom: "10px",
-              display: "grid",
-              gap: "10px",
-            }}
-          >
+          <div key={i} style={{ border: "1px solid #ccc", padding: "10px" }}>
             <strong>Row {i + 1}</strong>
 
-            <input
-              placeholder="AR No"
-              value={row.arNo}
-              onChange={(e) =>
-                handleRowChange(i, "arNo", e.target.value)
-              }
-            />
+            <input value={row.arNo} placeholder="AR No" onChange={(e) => handleRowChange(i, "arNo", e.target.value)} />
 
-            <select
-              value={row.beanId}
-              onChange={(e) =>
-                handleRowChange(i, "beanId", e.target.value)
-              }
-            >
+            <select value={row.beanId} onChange={(e) => handleRowChange(i, "beanId", e.target.value)}>
               <option value="">Select Bean</option>
               {beans.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -324,33 +273,20 @@ function FormsGeneration() {
             </select>
 
             <input value={unitCost} readOnly />
-
             <input
               type="number"
               placeholder="Volume"
               value={row.volume}
-              onChange={(e) =>
-                handleRowChange(i, "volume", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "volume", e.target.value)}
             />
-
             <input value={total} readOnly />
 
-            <input
-              type="datetime-local"
-              value={row.paymentDT}
-              onChange={(e) => {
-                handleRowChange(i, "paymentDT", e.target.value);
-                e.target.blur();
-            }}
-            />
+            <input type="datetime-local" value={row.paymentDT} onChange={(e) => { handleRowChange(i, "paymentDT", e.target.value); e.target.blur(); }} />
 
             <input
               placeholder="Remarks"
               value={row.remarks2}
-              onChange={(e) =>
-                handleRowChange(i, "remarks2", e.target.value)
-              }
+              onChange={(e) => handleRowChange(i, "remarks2", e.target.value)}
             />
 
             <button onClick={() => removeRow(i)}>Remove</button>
@@ -360,11 +296,9 @@ function FormsGeneration() {
 
       <button onClick={addRow}>+ Add Row</button>
 
-      <div style={{ marginTop: "20px" }}>
-        <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
-      </div>
+      <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
 
-      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+      <div style={{ display: "flex", gap: "10px" }}>
         <button onClick={exportDocx}>Export DOCX</button>
         <button onClick={printTemplate}>Print</button>
       </div>

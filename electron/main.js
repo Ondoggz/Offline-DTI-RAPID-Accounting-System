@@ -1,11 +1,14 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
+const crypto = require("crypto"); // 🔥 FIX: missing in your code
 const db = require("./db");
 
 let dbReady = false;
-
 let mainWindow = null;
 
+/* =========================
+   CREATE WINDOW
+========================= */
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -41,14 +44,14 @@ app.on("window-all-closed", () => {
 });
 
 /* =========================
-   SAFE WRAPPER
+   SAFE DB CHECK
 ========================= */
 function ensureDB() {
   if (!dbReady) throw new Error("Database not ready");
 }
 
 /* =========================
-   HELPER: EMIT UPDATE
+   REALTIME UI SYNC
 ========================= */
 function emitUpdate(channel) {
   if (mainWindow) {
@@ -115,7 +118,7 @@ ipcMain.handle("delivery:add", (_, data) => {
   const res = db.addDelivery(data);
 
   emitUpdate("deliveries:updated");
-  emitUpdate("transactions:updated"); // 🔥 important for your history
+  emitUpdate("transactions:updated");
 
   return res;
 });
@@ -144,7 +147,7 @@ ipcMain.handle("delivery:delete", (_, payload) => {
     const res = db.deleteDelivery(id);
 
     emitUpdate("deliveries:updated");
-    emitUpdate("transactions:updated"); // 🔥 sync UI
+    emitUpdate("transactions:updated");
 
     return { success: true };
   } catch (err) {
@@ -160,10 +163,13 @@ ipcMain.handle("payment:add", (_, data) => {
 
   const enriched = {
     ...data,
-    id: crypto.randomUUID(),
+    id: crypto.randomUUID(), // 🔥 FIX: now works
   };
 
-  return db.addPayment(enriched);
+  const res = db.addPayment(enriched);
+  emitUpdate("payments:updated");
+
+  return res;
 });
 
 ipcMain.handle("payment:get", () => {
@@ -176,7 +182,9 @@ ipcMain.handle("payment:get", () => {
 ========================= */
 ipcMain.handle("transaction:add", (_, data) => {
   ensureDB();
-  return db.addTransaction(data);
+  const res = db.addTransaction(data);
+  emitUpdate("transactions:updated");
+  return res;
 });
 
 ipcMain.handle("transaction:get", () => {
@@ -189,7 +197,9 @@ ipcMain.handle("transaction:get", () => {
 ========================= */
 ipcMain.handle("user:add", (_, data) => {
   ensureDB();
-  return db.addUser(data);
+  const res = db.addUser(data);
+  emitUpdate("users:updated");
+  return res;
 });
 
 ipcMain.handle("user:get", () => {
@@ -204,7 +214,9 @@ ipcMain.handle("user:find", (_, username) => {
 
 ipcMain.handle("user:delete", (_, id) => {
   ensureDB();
-  return db.deleteUser(id);
+  const res = db.deleteUser(id);
+  emitUpdate("users:updated");
+  return res;
 });
 
 /* =========================
@@ -225,4 +237,69 @@ ipcMain.handle("user:login", (_, { username, password }) => {
   }
 
   return { success: true, user };
+});
+
+/* =========================
+   PRINT FORM (OFFLINE)
+========================= */
+ipcMain.handle("form:print", async (_, data) => {
+  try {
+    const printWindow = new BrowserWindow({
+      show: false,
+    });
+
+    const html = `
+      <html>
+        <body style="font-family: Arial; padding: 20px;">
+          <h2>Form Preview</h2>
+
+          <p><strong>Name:</strong> ${data.name}</p>
+          <p><strong>ID:</strong> ${data.idNumber}</p>
+          <p><strong>Total:</strong> ₱${data.amountInFigures}</p>
+
+          <hr />
+
+          <table border="1" cellpadding="5" cellspacing="0" width="100%">
+            <thead>
+              <tr>
+                <th>Particulars</th>
+                <th>Volume</th>
+                <th>Unit Cost</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.rows
+                .map(
+                  (r) => `
+                <tr>
+                  <td>${r.particulars}</td>
+                  <td>${r.volume}</td>
+                  <td>${r.unitCost}</td>
+                  <td>${r.totalAmount}</td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    await printWindow.loadURL(
+      "data:text/html;charset=utf-8," + encodeURIComponent(html)
+    );
+
+    const pdf = await printWindow.webContents.printToPDF({
+      printBackground: true,
+    });
+
+    printWindow.close();
+
+    return pdf; // ✅ REQUIRED
+  } catch (err) {
+    console.error("PRINT ERROR:", err);
+    throw err;
+  }
 });
