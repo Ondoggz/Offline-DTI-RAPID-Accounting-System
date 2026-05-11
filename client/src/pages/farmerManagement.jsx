@@ -21,9 +21,6 @@ function FarmerManagement() {
 
   const [form, setForm] = useState(initialForm);
 
-  /* =========================
-     LOAD DATA (ELECTRON IPC)
-  ========================= */
   const fetchData = async () => {
     try {
       const [farmersRes, beansRes] = await Promise.all([
@@ -31,9 +28,7 @@ function FarmerManagement() {
         window.api.getBeans(),
       ]);
 
-      const farmerList = Array.isArray(farmersRes)
-        ? farmersRes
-        : [];
+      const farmerList = Array.isArray(farmersRes) ? farmersRes : [];
 
       setFarmers(
         farmerList.map((f) => ({
@@ -61,9 +56,6 @@ function FarmerManagement() {
     fetchData();
   }, []);
 
-  /* =========================
-     HELPERS
-  ========================= */
   const parseBeans = (data) => {
     if (!data) return [];
     if (Array.isArray(data)) return data;
@@ -116,17 +108,13 @@ function FarmerManagement() {
     setIsEditing(false);
   };
 
-  /* =========================
-     VALIDATION
-  ========================= */
   const validateForm = () => {
     const newErrors = {};
 
     if (!form.farmerID.trim()) newErrors.farmerID = "Required";
     if (!form.name.trim()) newErrors.name = "Required";
     if (!form.sex.trim()) newErrors.sex = "Required";
-    if (!form.age || Number(form.age) <= 0)
-      newErrors.age = "Invalid age";
+    if (!form.age || Number(form.age) <= 0) newErrors.age = "Invalid age";
 
     if (!form.residentialAddress.trim())
       newErrors.residentialAddress = "Required";
@@ -144,9 +132,6 @@ function FarmerManagement() {
     return Object.keys(newErrors).length === 0;
   };
 
-  /* =========================
-     CREATE / UPDATE (OFFLINE FIXED)
-  ========================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -176,9 +161,6 @@ function FarmerManagement() {
     }
   };
 
-  /* =========================
-     EDIT FIX
-  ========================= */
   const handleEdit = (f) => {
     setForm({
       id: f.id,
@@ -196,15 +178,11 @@ function FarmerManagement() {
     setIsEditing(true);
   };
 
-  /* =========================
-     DELETE FIX
-  ========================= */
   const handleDelete = async (id) => {
     if (!confirm("Delete farmer?")) return;
 
     try {
       await window.api.deleteFarmer?.(id);
-
       setFarmers((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
       console.error(err);
@@ -216,12 +194,24 @@ function FarmerManagement() {
     <div style={{ padding: "20px" }}>
       <h2>Farmer Management</h2>
 
-      {/* FORM (UNCHANGED UI) */}
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "14px", maxWidth: "700px" }}>
-        <input name="farmerID" value={form.farmerID} onChange={handleChange} placeholder="Farmer ID" />
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "grid", gap: "14px", maxWidth: "700px" }}
+      >
+        <input
+          name="farmerID"
+          value={form.farmerID}
+          onChange={handleChange}
+          placeholder="Farmer ID"
+        />
         {errors.farmerID && <p>{errors.farmerID}</p>}
 
-        <input name="name" value={form.name} onChange={handleChange} placeholder="Full Name" />
+        <input
+          name="name"
+          value={form.name}
+          onChange={handleChange}
+          placeholder="Full Name"
+        />
         {errors.name && <p>{errors.name}</p>}
 
         <select name="sex" value={form.sex} onChange={handleChange}>
@@ -230,13 +220,41 @@ function FarmerManagement() {
           <option value="Female">Female</option>
         </select>
 
-        <input name="age" value={form.age} onChange={handleChange} placeholder="Age" />
-        <input name="residentialAddress" value={form.residentialAddress} onChange={handleChange} placeholder="Residential Address" />
-        <input name="farmAddress" value={form.farmAddress} onChange={handleChange} placeholder="Farm Address" />
-        <input name="contactNumber" value={form.contactNumber} onChange={handleChange} placeholder="Contact Number" />
-        <input name="emailAddress" value={form.emailAddress} onChange={handleChange} placeholder="Email" />
+        <input
+          name="age"
+          value={form.age}
+          onChange={handleChange}
+          placeholder="Age"
+        />
 
-        {/* ✅ FIXED BEANS DROPDOWN */}
+        <input
+          name="residentialAddress"
+          value={form.residentialAddress}
+          onChange={handleChange}
+          placeholder="Residential Address"
+        />
+
+        <input
+          name="farmAddress"
+          value={form.farmAddress}
+          onChange={handleChange}
+          placeholder="Farm Address"
+        />
+
+        <input
+          name="contactNumber"
+          value={form.contactNumber}
+          onChange={handleChange}
+          placeholder="Contact Number"
+        />
+
+        <input
+          name="emailAddress"
+          value={form.emailAddress}
+          onChange={handleChange}
+          placeholder="Email"
+        />
+
         <div>
           <p>Beans</p>
 
@@ -254,9 +272,15 @@ function FarmerManagement() {
                 ))}
               </select>
 
-              <button type="button" onClick={addBeanField}>+</button>
+              <button type="button" onClick={addBeanField}>
+                +
+              </button>
+
               {form.beans.length > 1 && (
-                <button type="button" onClick={() => removeBeanField(i)}>
+                <button
+                  type="button"
+                  onClick={() => removeBeanField(i)}
+                >
                   -
                 </button>
               )}
@@ -264,10 +288,11 @@ function FarmerManagement() {
           ))}
         </div>
 
-        <button type="submit">{isEditing ? "Update" : "Add"}</button>
+        <button type="submit">
+          {isEditing ? "Update" : "Add"}
+        </button>
       </form>
 
-      {/* TABLE */}
       <table border="1" style={{ marginTop: "20px", width: "100%" }}>
         <thead>
           <tr>
