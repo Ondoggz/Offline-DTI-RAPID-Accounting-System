@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("api", {
   ========================= */
   addFarmer: (data) => ipcRenderer.invoke("farmer:add", data),
   getFarmers: () => ipcRenderer.invoke("farmer:get"),
+updateFarmer: (id, data) => ipcRenderer.invoke("farmer:update", { id, data }),
+deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
 
   /* =========================
      DELIVERIES

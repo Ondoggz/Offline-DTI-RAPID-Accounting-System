@@ -194,7 +194,32 @@ function addFarmer(f) {
 
   run(
     `
-    INSERT INTO farmers VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO farmers (
+      id,
+      farmerID,
+      name,
+      sex,
+      age,
+      residentialAddress,
+      farmAddress,
+      contactNumber,
+      emailAddress,
+      beans,
+      createdAt,
+      updatedAt
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      farmerID = excluded.farmerID,
+      name = excluded.name,
+      sex = excluded.sex,
+      age = excluded.age,
+      residentialAddress = excluded.residentialAddress,
+      farmAddress = excluded.farmAddress,
+      contactNumber = excluded.contactNumber,
+      emailAddress = excluded.emailAddress,
+      beans = excluded.beans,
+      updatedAt = excluded.updatedAt
     `,
     [
       f.id,
@@ -215,6 +240,38 @@ function addFarmer(f) {
 
 function getFarmers() {
   return all(`SELECT * FROM farmers`);
+}
+
+function updateFarmer(id, f) {
+  const now = new Date().toISOString();
+
+  run(
+    `UPDATE farmers SET
+      farmerID = ?,
+      name = ?,
+      sex = ?,
+      age = ?,
+      residentialAddress = ?,
+      farmAddress = ?,
+      contactNumber = ?,
+      emailAddress = ?,
+      beans = ?,
+      updatedAt = ?
+    WHERE id = ?`,
+    [
+      f.farmerID,
+      f.name,
+      f.sex,
+      f.age,
+      f.residentialAddress,
+      f.farmAddress,
+      f.contactNumber,
+      f.emailAddress,
+      JSON.stringify(f.beans || []),
+      now,
+      id,
+    ]
+  );
 }
 
 function deleteFarmer(id) {
@@ -391,6 +448,7 @@ module.exports = {
 
   addFarmer,
   getFarmers,
+  updateFarmer,
   deleteFarmer,
 
   addDelivery,

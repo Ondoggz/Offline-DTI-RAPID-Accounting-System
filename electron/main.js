@@ -73,6 +73,14 @@ ipcMain.handle("farmer:get", () => {
   return db.getFarmers();
 });
 
+ipcMain.handle("farmer:update", (_, { id, data }) => {
+  return db.updateFarmer(id, data);
+});
+
+ipcMain.handle("farmer:delete", (_, id) => {
+  return db.deleteFarmer(id);
+});
+
 /* =========================
    DELIVERIES
 ========================= */
