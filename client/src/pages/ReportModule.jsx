@@ -369,7 +369,6 @@ const ReportModule = () => {
       <div className="report-header no-print">
         <div>
           <h2>Monthly Report Generation</h2>
-          <p>Offline Mode (Electron DB)</p>
         </div>
 
         <div className="report-actions">

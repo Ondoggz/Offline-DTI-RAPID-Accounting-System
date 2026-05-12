@@ -10,13 +10,14 @@ function DeliveryEntry() {
   const [beans, setBeans] = useState([]);
   const [file, setFile] = useState(null);
 
-  // 🔥 DELETE MODAL STATE (ONLY ADDITION)
+  // 🔥 DELETE MODAL STATE
   const [deleteId, setDeleteId] = useState(null);
   const [deletePassword, setDeletePassword] = useState("");
 
   const getRecordedBy = () => {
     if (user?.name && user?.position)
       return `${user.name} (${user.position})`;
+
     return user?.name || user?.username || "Unknown User";
   };
 
@@ -69,6 +70,21 @@ function DeliveryEntry() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    // 🔥 CONTACT NUMBER VALIDATION
+    if (
+      name === "deliveryGuyContact" ||
+      name === "consigneeContact"
+    ) {
+      const numbersOnly = value.replace(/\D/g, "").slice(0, 11);
+
+      setForm((prev) => ({
+        ...prev,
+        [name]: numbersOnly,
+      }));
+
+      return;
+    }
+
     if (name === "farmer") {
       const selectedFarmer = farmers.find((f) => f.name === value);
 
@@ -87,7 +103,9 @@ function DeliveryEntry() {
     }));
   };
 
-  const selectedBean = beans.find((b) => b.beanName === form.beanType);
+  const selectedBean = beans.find(
+    (b) => b.beanName === form.beanType
+  );
 
   const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
   const volume = Number(form.volume || 0);
@@ -98,27 +116,47 @@ function DeliveryEntry() {
       ...emptyForm,
       recordedBy: getRecordedBy(),
     });
+
     setFile(null);
   };
 
   const validateForm = () => {
     if (!form.farmer) return "Please select a farmer.";
-    if (!form.beanType) return "Please select a bean type.";
+
+    if (!form.beanType)
+      return "Please select a bean type.";
+
     if (!form.volume || Number(form.volume) <= 0)
       return "Invalid volume.";
+
     if (!form.courier) return "Enter courier.";
+
     if (!form.date) return "Select date.";
-    if (!form.deliveryGuy) return "Enter delivery guy.";
+
+    if (!form.deliveryGuy)
+      return "Enter delivery guy.";
+
     if (!form.deliveryGuyContact)
       return "Enter delivery guy contact.";
-    if (!form.consignee) return "Enter consignee.";
+
+    if (form.deliveryGuyContact.length !== 11)
+      return "Delivery guy contact must be 11 digits.";
+
+    if (!form.consignee)
+      return "Enter consignee.";
+
     if (!form.consigneeContact)
       return "Enter consignee contact.";
+
+    if (form.consigneeContact.length !== 11)
+      return "Consignee contact must be 11 digits.";
+
     return null;
   };
 
   const handleSubmit = async () => {
     const error = validateForm();
+
     if (error) return alert(error);
 
     try {
@@ -143,6 +181,7 @@ function DeliveryEntry() {
       await window.api.addDelivery(payload);
 
       await fetchData();
+
       setShowForm(false);
       resetForm();
     } catch (err) {
@@ -151,7 +190,7 @@ function DeliveryEntry() {
     }
   };
 
-  // 🔥 DELETE (REPLACED prompt WITH MODAL)
+  // 🔥 DELETE
   const openDelete = (id) => {
     setDeleteId(id);
     setDeletePassword("");
@@ -170,7 +209,9 @@ function DeliveryEntry() {
       }
 
       setDeliveries((prev) =>
-        prev.filter((item) => String(item.id) !== String(deleteId))
+        prev.filter(
+          (item) => String(item.id) !== String(deleteId)
+        )
       );
 
       setDeleteId(null);
@@ -202,9 +243,9 @@ function DeliveryEntry() {
               <div key={d.id} className="delivery-item">
                 <span>
                   {d.farmer} • {d.beanType} •{" "}
-                  {d.date?.slice(0, 10)} • Volume: {d.volume} •
-                  Price: {d.pricePerUnit} • Total:{" "}
-                  {d.totalAmount}
+                  {d.date?.slice(0, 10)} • Volume:{" "}
+                  {d.volume} • Price: {d.pricePerUnit} •
+                  Total: {d.totalAmount}
                 </span>
 
                 <button
@@ -219,7 +260,7 @@ function DeliveryEntry() {
         </>
       )}
 
-      {/* 🔥 DELETE MODAL (ONLY ADDITION) */}
+      {/* 🔥 DELETE MODAL */}
       {deleteId && (
         <div className="modal">
           <div className="modal-box">
@@ -228,28 +269,38 @@ function DeliveryEntry() {
             <input
               type="password"
               value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
+              onChange={(e) =>
+                setDeletePassword(e.target.value)
+              }
             />
 
             <div className="modal-actions">
-              <button onClick={confirmDelete}>Confirm</button>
-              <button onClick={() => setDeleteId(null)}>Cancel</button>
+              <button onClick={confirmDelete}>
+                Confirm
+              </button>
+
+              <button
+                onClick={() => setDeleteId(null)}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 👇 YOUR FORM + FILE UPLOAD + EVERYTHING BELOW IS STILL INTACT */}
       {showForm && (
         <div className="form-grid">
           <div className="form-group">
             <label>Farmer</label>
+
             <select
               name="farmer"
               onChange={handleChange}
               value={form.farmer}
             >
               <option value="">Select farmer</option>
+
               {farmers.map((f) => (
                 <option key={f.id} value={f.name}>
                   {f.name}
@@ -265,12 +316,14 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Bean Type</label>
+
             <select
               name="beanType"
               onChange={handleChange}
               value={form.beanType}
             >
               <option value="">Select bean</option>
+
               {beans.map((b) => (
                 <option key={b.id} value={b.beanName}>
                   {b.beanName}
@@ -281,6 +334,7 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Volume</label>
+
             <input
               type="number"
               name="volume"
@@ -301,6 +355,7 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Courier</label>
+
             <input
               name="courier"
               value={form.courier}
@@ -310,6 +365,7 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Date</label>
+
             <input
               type="date"
               name="date"
@@ -320,6 +376,7 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Delivery Guy</label>
+
             <input
               name="deliveryGuy"
               value={form.deliveryGuy}
@@ -328,16 +385,22 @@ function DeliveryEntry() {
           </div>
 
           <div className="form-group">
-          <label>Delivery Guy Contact</label>
-          <input
-            name="deliveryGuyContact"
-            value={form.deliveryGuyContact}
-            onChange={handleChange}
-          />
-        </div>
+            <label>Delivery Guy Contact</label>
+
+            <input
+              type="text"
+              name="deliveryGuyContact"
+              value={form.deliveryGuyContact}
+              onChange={handleChange}
+              maxLength={11}
+              inputMode="numeric"
+              placeholder="09XXXXXXXXX"
+            />
+          </div>
 
           <div className="form-group">
             <label>Consignee</label>
+
             <input
               name="consignee"
               value={form.consignee}
@@ -347,18 +410,26 @@ function DeliveryEntry() {
 
           <div className="form-group">
             <label>Consignee Contact</label>
+
             <input
+              type="text"
               name="consigneeContact"
               value={form.consigneeContact}
               onChange={handleChange}
+              maxLength={11}
+              inputMode="numeric"
+              placeholder="09XXXXXXXXX"
             />
           </div>
 
           <div className="form-group">
             <label>Proof of Delivery</label>
+
             <input
               type="file"
-              onChange={(e) => setFile(e.target.files[0])}
+              onChange={(e) =>
+                setFile(e.target.files[0])
+              }
             />
           </div>
 
@@ -368,7 +439,10 @@ function DeliveryEntry() {
           </div>
 
           <div className="form-actions">
-            <button className="save-btn" onClick={handleSubmit}>
+            <button
+              className="save-btn"
+              onClick={handleSubmit}
+            >
               Save
             </button>
 
