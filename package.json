@@ -52,7 +52,9 @@
   "dependencies": {
     "docxtemplater": "^3.0.0",
     "dotenv": "^17.4.2",
+    "electron-store": "^11.0.2",
     "file-saver": "^2.0.5",
+    "jsonwebtoken": "^9.0.3",
     "pizzip": "^3.1.0",
     "sql.js": "^1.10.0"
   },

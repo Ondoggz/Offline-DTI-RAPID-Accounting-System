@@ -1,4 +1,0 @@
-PORT=3000
-DATABASE_URL=mongodb+srv://byss:143Uriel@accountingsystem-dti.ftzf4vc.mongodb.net/test?retryWrites=true&w=majority&appName=AccountingSystem-DTI
-FRONTEND_URL=http://localhost:5173
-JWT_SECRET=your_super_secret_key

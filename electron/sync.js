@@ -11,7 +11,7 @@ const { URL } = require("url");
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const REMOTE_BASE_URL =
-  process.env.REMOTE_API_URL || "https://dti-accounting-system.vercel.app";
+  process.env.REMOTE_API_URL || "https://dti-accounting-system-backend-ycyg.onrender.com";
 
 const SYNC_USERNAME = process.env.SYNC_USERNAME || "admin";
 const SYNC_PASSWORD = process.env.SYNC_PASSWORD || "admin123";

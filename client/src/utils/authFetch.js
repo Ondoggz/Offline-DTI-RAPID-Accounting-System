@@ -1,12 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
 export async function authFetch(endpoint, options = {}) {
-  const token = localStorage.getItem("token");
+  // ✅ Get token from main process, not localStorage
+  const session = await window.api.getSession();
+  const token = session?.token || null;
 
-  // ✅ Normalize endpoint
   let url = endpoint;
-
-  // if endpoint is NOT full URL, attach base
   if (!url.startsWith("http")) {
     url = `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   }
@@ -21,9 +20,7 @@ export async function authFetch(endpoint, options = {}) {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("lastActivity");
+    await window.api.logout();
     window.location.reload();
   }
 

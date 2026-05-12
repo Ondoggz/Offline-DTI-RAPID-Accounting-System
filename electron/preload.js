@@ -13,8 +13,7 @@ contextBridge.exposeInMainWorld("api", {
   ========================= */
   addFarmer: (data) => ipcRenderer.invoke("farmer:add", data),
   getFarmers: () => ipcRenderer.invoke("farmer:get"),
-  updateFarmer: (id, data) =>
-    ipcRenderer.invoke("farmer:update", { id, data }),
+  updateFarmer: (id, data) => ipcRenderer.invoke("farmer:update", { id, data }),
   deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
 
   /* =========================
@@ -22,8 +21,7 @@ contextBridge.exposeInMainWorld("api", {
   ========================= */
   addDelivery: (data) => ipcRenderer.invoke("delivery:add", data),
   getDeliveries: () => ipcRenderer.invoke("delivery:get"),
-  deleteDelivery: (id, password) =>
-    ipcRenderer.invoke("delivery:delete", { id, password }),
+  deleteDelivery: (id, password) => ipcRenderer.invoke("delivery:delete", { id, password }),
 
   /* =========================
      PAYMENTS
@@ -47,8 +45,9 @@ contextBridge.exposeInMainWorld("api", {
   /* =========================
      AUTH
   ========================= */
-  login: (username, password) =>
-    ipcRenderer.invoke("user:login", { username, password }),
+  login: (username, password) => ipcRenderer.invoke("user:login", { username, password }),
+  getSession: () => ipcRenderer.invoke("user:session"),
+  logout: () => ipcRenderer.invoke("user:logout"),
 
   /* =========================
      PRINT
@@ -58,31 +57,22 @@ contextBridge.exposeInMainWorld("api", {
   /* =========================
      SYNC
   ========================= */
-  // Manually trigger a sync (e.g. from a "Sync Now" button)
   syncNow: () => ipcRenderer.invoke("sync:trigger"),
-
-  // Check if the remote server is reachable right now
   checkOnline: () => ipcRenderer.invoke("sync:checkOnline"),
-
-  // Get count of records not yet pushed to remote
   getPendingCount: () => ipcRenderer.invoke("sync:pending"),
 
-  // Listen for sync status updates from the main process
-  // Returns an unsubscribe function — call it in useEffect cleanup
   onSyncStatus: (callback) => {
     const handler = (_, status) => callback(status);
     ipcRenderer.on("sync:status", handler);
     return () => ipcRenderer.removeListener("sync:status", handler);
   },
 
-  // Listen for fine-grained sync progress messages (optional, for a log view)
   onSyncProgress: (callback) => {
     const handler = (_, msg) => callback(msg);
     ipcRenderer.on("sync:progress", handler);
     return () => ipcRenderer.removeListener("sync:progress", handler);
   },
 
-  // Listen for data refresh events emitted after a sync completes
   onDataUpdated: (channel, callback) => {
     const handler = () => callback();
     ipcRenderer.on(channel, handler);
