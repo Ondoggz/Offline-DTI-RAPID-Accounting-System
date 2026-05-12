@@ -4,30 +4,24 @@
   "description": "Offline DTI Accounting System (Electron + React + sql.js)",
   "main": "electron/main.js",
   "private": true,
-
   "scripts": {
-    "dev": "concurrently \"vite\" \"electron .\"",
+    "dev": "concurrently \"npm run dev --prefix client\" \"electron .\"",
     "build:client": "cd client && npm install && npm run build",
     "build:electron": "electron-builder",
     "dist": "npm run build:client && npm run build:electron"
   },
-
   "build": {
     "appId": "com.offline.dti",
     "productName": "Offline DTI Accounting System",
-
     "directories": {
       "output": "dist_electron"
     },
-
     "files": [
       "electron/**/*",
       "client/dist/**/*",
       "package.json"
     ],
-
     "asar": false,
-
     "extraResources": [
       {
         "from": "client/dist",
@@ -38,16 +32,16 @@
         "to": "sqljs"
       }
     ],
-
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
-
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -55,18 +49,17 @@
       "createStartMenuShortcut": true
     }
   },
-
   "dependencies": {
     "docxtemplater": "^3.0.0",
+    "dotenv": "^17.4.2",
     "file-saver": "^2.0.5",
     "pizzip": "^3.1.0",
     "sql.js": "^1.10.0"
   },
-
   "devDependencies": {
+    "concurrently": "^8.0.0",
     "electron": "^30.0.0",
     "electron-builder": "^24.0.0",
-    "vite": "^5.0.0",
-    "concurrently": "^8.0.0"
+    "vite": "^5.0.0"
   }
 }

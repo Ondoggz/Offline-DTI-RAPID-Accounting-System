@@ -1,21 +1,20 @@
 const initSqlJs = require("sql.js");
 const fs = require("fs");
 const path = require("path");
-const { app } = require("electron"); // ✅ FIX ADDED
+const { app } = require("electron");
 
 let SQL;
 let db;
 
-/* ⚠️ FIX: IMPORTANT FOR ELECTRON PACKAGING
-   __dirname breaks in production builds (asar/exe)
-*/
 const dbPath = app
   ? path.join(app.getPath("userData"), "local.sqlite")
   : path.join(__dirname, "local.sqlite");
 
-  function seedAdminUser() {
+/* =========================
+   SEED ADMIN
+========================= */
+function seedAdminUser() {
   const users = getUsers();
-
   if (users.length === 0) {
     addUser({
       id: "admin-1",
@@ -27,7 +26,6 @@ const dbPath = app
       age: null,
       position: "System Admin",
     });
-
     console.log("🔥 Admin user created");
   }
 }
@@ -47,7 +45,33 @@ async function initDB() {
     saveDB();
   }
 
+  // Always run migrations — safe to call on existing DBs
+  runMigrations();
   seedAdminUser();
+}
+
+/* =========================
+   MIGRATIONS
+   Adds `synced` column to existing tables without breaking anything.
+   ALTER TABLE in SQLite ignores errors if column already exists via try/catch.
+========================= */
+function runMigrations() {
+  const migrations = [
+    `ALTER TABLE beans ADD COLUMN synced INTEGER DEFAULT 0`,
+    `ALTER TABLE farmers ADD COLUMN synced INTEGER DEFAULT 0`,
+    `ALTER TABLE deliveries ADD COLUMN synced INTEGER DEFAULT 0`,
+    `ALTER TABLE payments ADD COLUMN synced INTEGER DEFAULT 0`,
+  ];
+
+  for (const sql of migrations) {
+    try {
+      db.run(sql);
+    } catch {
+      // Column already exists — safe to ignore
+    }
+  }
+
+  saveDB();
 }
 
 /* =========================
@@ -89,7 +113,8 @@ function createTables() {
       pricePerUnit REAL,
       unit TEXT,
       createdAt TEXT,
-      updatedAt TEXT
+      updatedAt TEXT,
+      synced INTEGER DEFAULT 0
     )
   `);
 
@@ -111,7 +136,8 @@ function createTables() {
       pricePerUnit REAL,
       totalAmount REAL,
       createdAt TEXT,
-      updatedAt TEXT
+      updatedAt TEXT,
+      synced INTEGER DEFAULT 0
     )
   `);
 
@@ -128,7 +154,8 @@ function createTables() {
       emailAddress TEXT,
       beans TEXT,
       createdAt TEXT,
-      updatedAt TEXT
+      updatedAt TEXT,
+      synced INTEGER DEFAULT 0
     )
   `);
 
@@ -141,7 +168,8 @@ function createTables() {
       paymentMethod TEXT,
       notes TEXT,
       createdAt TEXT,
-      updatedAt TEXT
+      updatedAt TEXT,
+      synced INTEGER DEFAULT 0
     )
   `);
 
@@ -184,13 +212,14 @@ function addBean(bean) {
 
   run(
     `
-    INSERT INTO beans (id, beanName, pricePerUnit, unit, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO beans (id, beanName, pricePerUnit, unit, createdAt, updatedAt, synced)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(id) DO UPDATE SET
       beanName = excluded.beanName,
       pricePerUnit = excluded.pricePerUnit,
       unit = excluded.unit,
-      updatedAt = excluded.updatedAt
+      updatedAt = excluded.updatedAt,
+      synced = 0
     `,
     [bean.id, bean.beanName, bean.pricePerUnit, bean.unit || "kg", now, now]
   );
@@ -216,9 +245,9 @@ function addFarmer(f) {
       id, farmerID, name, sex, age,
       residentialAddress, farmAddress,
       contactNumber, emailAddress, beans,
-      createdAt, updatedAt
+      createdAt, updatedAt, synced
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(id) DO UPDATE SET
       farmerID = excluded.farmerID,
       name = excluded.name,
@@ -229,7 +258,8 @@ function addFarmer(f) {
       contactNumber = excluded.contactNumber,
       emailAddress = excluded.emailAddress,
       beans = excluded.beans,
-      updatedAt = excluded.updatedAt
+      updatedAt = excluded.updatedAt,
+      synced = 0
     `,
     [
       f.id,
@@ -266,7 +296,8 @@ function updateFarmer(id, f) {
       contactNumber = ?,
       emailAddress = ?,
       beans = ?,
-      updatedAt = ?
+      updatedAt = ?,
+      synced = 0
     WHERE id = ?`,
     [
       f.farmerID,
@@ -297,7 +328,7 @@ function addDelivery(d) {
 
   run(
     `INSERT INTO deliveries VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
     )`,
     [
       d.id,
@@ -377,7 +408,7 @@ function addPayment(p) {
   };
 
   run(
-    `INSERT INTO payments VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO payments VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     [
       payment.id,
       payment.deliveryId,
@@ -462,20 +493,29 @@ function deleteUser(id) {
 ========================= */
 module.exports = {
   initDB,
+  // raw helpers exposed for sync.js
+  all,
+  run,
+  // beans
   addBean,
   getBeans,
   deleteBean,
+  // farmers
   addFarmer,
   getFarmers,
   updateFarmer,
   deleteFarmer,
+  // deliveries
   addDelivery,
   getDeliveries,
   deleteDelivery,
+  // payments
   addPayment,
   getPayments,
+  // transactions
   addTransaction,
   getTransactions,
+  // users
   addUser,
   getUsers,
   getUserByUsername,

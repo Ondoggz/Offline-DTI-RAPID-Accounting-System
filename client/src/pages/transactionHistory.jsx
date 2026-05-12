@@ -19,7 +19,7 @@ function TransactionHistory() {
 
       setTransactions(safeDeliveries);
 
-      // build details per transaction
+      // Rebuild detail map for all deliveries
       const detailMap = {};
 
       safeDeliveries.forEach((t) => {
@@ -53,10 +53,14 @@ function TransactionHistory() {
   useEffect(() => {
     fetchTransactions();
 
-    // 🔥 auto refresh (so it updates when deliveries change)
-    const interval = setInterval(fetchTransactions, 2000);
+    // Listen for payment/delivery updates pushed from main process
+    const unsubPayments = window.api.onDataUpdated("payments:updated", fetchTransactions);
+    const unsubDeliveries = window.api.onDataUpdated("deliveries:updated", fetchTransactions);
 
-    return () => clearInterval(interval);
+    return () => {
+      unsubPayments?.();
+      unsubDeliveries?.();
+    };
   }, []);
 
   const toggle = (id) => {
@@ -76,7 +80,7 @@ function TransactionHistory() {
     }
 
     if (amount > balance) {
-      alert(`Payment exceeds remaining balance (₱${balance})`);
+      alert(`Payment exceeds remaining balance (₱${balance.toFixed(2)})`);
       return;
     }
 
@@ -86,25 +90,30 @@ function TransactionHistory() {
         amountPaid: amount,
       });
 
-      setAmounts((prev) => ({
-        ...prev,
-        [id]: "",
-      }));
+      // Clear input for this transaction
+      setAmounts((prev) => ({ ...prev, [id]: "" }));
 
-      fetchTransactions();
+      // Refresh all transaction data
+      await fetchTransactions();
     } catch (err) {
       console.error("Payment error:", err);
+      alert("Failed to add payment. Please try again.");
     }
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Transactions (Offline)</h2>
+      <h2>Transactions</h2>
+
+      {transactions.length === 0 && (
+        <p style={{ color: "#6b7280" }}>No transactions found.</p>
+      )}
 
       {transactions.map((t) => {
         const data = details[t.id];
         const summary = data?.summary;
         const payments = data?.payments;
+        const balance = summary?.balance ?? 0;
 
         return (
           <div
@@ -123,29 +132,51 @@ function TransactionHistory() {
                 cursor: "pointer",
                 display: "flex",
                 justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
               <strong>{t.farmer}</strong>
-              <span>₱{t.totalAmount}</span>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                {summary && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      padding: "2px 8px",
+                      borderRadius: 10,
+                      background: summary.status === "PAID" ? "#d1fae5" : "#fef3c7",
+                      color: summary.status === "PAID" ? "#065f46" : "#92400e",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {summary.status}
+                  </span>
+                )}
+                <span>₱{Number(t.totalAmount || 0).toFixed(2)}</span>
+              </div>
             </div>
 
             {/* DROPDOWN */}
             {openId === t.id && (
               <div style={{ marginTop: 10 }}>
                 <p>Bean: {t.beanType}</p>
-                <p>Date: {t.date?.slice(0, 10)}</p>
+                <p>
+                  Date:{" "}
+                  {t.date
+                    ? new Date(t.date).toLocaleDateString()
+                    : "—"}
+                </p>
 
                 <hr />
 
                 {summary ? (
                   <>
-                    <p>Total: ₱{t.totalAmount}</p>
-                    <p>Paid: ₱{summary.totalPaid}</p>
-                    <p>Balance: ₱{summary.balance}</p>
+                    <p>Total: ₱{Number(t.totalAmount || 0).toFixed(2)}</p>
+                    <p>Paid: ₱{Number(summary.totalPaid || 0).toFixed(2)}</p>
+                    <p>Balance: ₱{Number(balance).toFixed(2)}</p>
                     <p>Status: {summary.status}</p>
                   </>
                 ) : (
-                  <p>Loading...</p>
+                  <p>Loading summary...</p>
                 )}
 
                 <hr />
@@ -154,7 +185,14 @@ function TransactionHistory() {
 
                 {payments?.length > 0 ? (
                   payments.map((p, i) => (
-                    <p key={i}>₱{p.amountPaid}</p>
+                    <p key={i}>
+                      ₱{Number(p.amountPaid || 0).toFixed(2)}
+                      {p.createdAt && (
+                        <span style={{ color: "#6b7280", fontSize: 12, marginLeft: 8 }}>
+                          {new Date(p.createdAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </p>
                   ))
                 ) : (
                   <p>No payments yet</p>
@@ -162,25 +200,31 @@ function TransactionHistory() {
 
                 <hr />
 
-                {/* PAYMENT INPUT */}
-                <input
-                  type="number"
-                  placeholder="Enter payment"
-                  value={amounts[t.id] || ""}
-                  onChange={(e) =>
-                    setAmounts((prev) => ({
-                      ...prev,
-                      [t.id]: e.target.value,
-                    }))
-                  }
-                />
-
-                <button
-                  onClick={() => addPayment(t.id)}
-                  style={{ marginLeft: 10 }}
-                >
-                  Add Payment
-                </button>
+                {/* PAYMENT INPUT — only show if balance > 0 */}
+                {balance > 0 ? (
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder={`Enter payment (max ₱${Number(balance).toFixed(2)})`}
+                      value={amounts[t.id] || ""}
+                      onChange={(e) => {
+                        // Allow digits and a single decimal point only
+                        const val = e.target.value;
+                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                          setAmounts((prev) => ({ ...prev, [t.id]: val }));
+                        }
+                      }}
+                    />
+                    <button onClick={() => addPayment(t.id)}>
+                      Add Payment
+                    </button>
+                  </div>
+                ) : (
+                  <p style={{ color: "#065f46", fontWeight: 600 }}>
+                    ✓ Fully paid
+                  </p>
+                )}
               </div>
             )}
           </div>

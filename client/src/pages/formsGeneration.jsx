@@ -36,7 +36,6 @@ function FormsGeneration() {
         const farmersRes = await window.api.getFarmers();
         const beansRes = await window.api.getBeans();
 
-        // ✅ normalize farmer IDs
         setFarmers(
           (farmersRes || []).map((f) => ({
             ...f,
@@ -44,7 +43,6 @@ function FormsGeneration() {
           }))
         );
 
-        // ✅ fix bean IDs
         setBeans(
           (beansRes || []).map((bean) => ({
             id: String(bean.id),
@@ -62,13 +60,11 @@ function FormsGeneration() {
   }, []);
 
   /* =========================
-     FIXED LOOKUPS
+     LOOKUPS
   ========================= */
   const selectedFarmer = useMemo(() => {
     return (
-      farmers.find(
-        (f) => String(f.id) === String(form.farmerId)
-      ) || null
+      farmers.find((f) => String(f.id) === String(form.farmerId)) || null
     );
   }, [farmers, form.farmerId]);
 
@@ -94,30 +90,19 @@ function FormsGeneration() {
   );
 
   const handleFormChange = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleRowChange = (index, field, value) => {
     setRows((prev) =>
-      prev.map((r, i) =>
-        i === index ? { ...r, [field]: value } : r
-      )
+      prev.map((r, i) => (i === index ? { ...r, [field]: value } : r))
     );
   };
 
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      {
-        arNo: "",
-        beanId: "",
-        volume: "",
-        paymentDT: "",
-        remarks2: "",
-      },
+      { arNo: "", beanId: "", volume: "", paymentDT: "", remarks2: "" },
     ]);
   };
 
@@ -160,11 +145,14 @@ function FormsGeneration() {
     rows: computedRows,
   });
 
+  /* =========================
+     EXPORT DOCX
+  ========================= */
   const exportDocx = async () => {
     if (!validateForm()) return;
 
     try {
-const response = await fetch(
+      const response = await fetch(
         window.location.origin + "/templates/Sample_Palamboon.docx"
       );
       const content = await response.arrayBuffer();
@@ -191,49 +179,15 @@ const response = await fetch(
     }
   };
 
-  const printTemplate = async () => {
-    if (!validateForm()) return;
-
-    try {
-      const pdfBuffer = await window.api.printForm(buildDocData());
-
-      const blob = new Blob([pdfBuffer], {
-        type: "application/pdf",
-      });
-
-      const url = URL.createObjectURL(blob);
-
-      const win = window.open(url);
-
-      if (!win) {
-        alert("Popup blocked. Please allow popups.");
-        return;
-      }
-
-      win.onload = () => {
-        win.print();
-      };
-    } catch (err) {
-      console.error(err);
-      alert("Print failed (offline backend).");
-    }
-  };
-
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Forms Generation (Offline Electron Mode)</h2>
+      <h2>Forms Generation</h2>
 
       <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
-        <select
-          name="farmerId"
-          value={form.farmerId}
-          onChange={handleFormChange}
-        >
+        <select name="farmerId" value={form.farmerId} onChange={handleFormChange}>
           <option value="">Select Farmer</option>
           {farmers.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
+            <option key={f.id} value={f.id}>{f.name}</option>
           ))}
         </select>
 
@@ -260,17 +214,22 @@ const response = await fetch(
         const total = unitCost * (row.volume || 0);
 
         return (
-          <div key={i} style={{ border: "1px solid #ccc", padding: "10px" }}>
+          <div key={i} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px" }}>
             <strong>Row {i + 1}</strong>
 
-            <input value={row.arNo} placeholder="AR No" onChange={(e) => handleRowChange(i, "arNo", e.target.value)} />
+            <input
+              value={row.arNo}
+              placeholder="AR No"
+              onChange={(e) => handleRowChange(i, "arNo", e.target.value)}
+            />
 
-            <select value={row.beanId} onChange={(e) => handleRowChange(i, "beanId", e.target.value)}>
+            <select
+              value={row.beanId}
+              onChange={(e) => handleRowChange(i, "beanId", e.target.value)}
+            >
               <option value="">Select Bean</option>
               {beans.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
+                <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
 
@@ -283,7 +242,14 @@ const response = await fetch(
             />
             <input value={total} readOnly />
 
-            <input type="datetime-local" value={row.paymentDT} onChange={(e) => { handleRowChange(i, "paymentDT", e.target.value); e.target.blur(); }} />
+            <input
+              type="datetime-local"
+              value={row.paymentDT}
+              onChange={(e) => {
+                handleRowChange(i, "paymentDT", e.target.value);
+                e.target.blur();
+              }}
+            />
 
             <input
               placeholder="Remarks"
@@ -302,7 +268,6 @@ const response = await fetch(
 
       <div style={{ display: "flex", gap: "10px" }}>
         <button onClick={exportDocx}>Export DOCX</button>
-        <button onClick={printTemplate}>Print</button>
       </div>
     </div>
   );

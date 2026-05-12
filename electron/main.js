@@ -1,15 +1,54 @@
+require("dotenv").config();
+
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const crypto = require("crypto");
 const db = require("./db");
+const { syncToRemote, checkOnline, getPendingCount } = require("./sync");
 
 let dbReady = false;
 let mainWindow = null;
+let syncInterval = null;
+
+/* =========================
+   WAIT FOR VITE (DEV ONLY)
+   Retries until localhost:5173 responds, so Electron
+   doesn't load a blank page before Vite is ready.
+========================= */
+function waitForVite(url, retries = 20, interval = 500) {
+  return new Promise((resolve) => {
+    const http = require("http");
+
+    function attempt(remaining) {
+      const req = http.get(url, (res) => {
+        if (res.statusCode < 500) {
+          resolve(); // Vite is up
+        } else if (remaining > 0) {
+          setTimeout(() => attempt(remaining - 1), interval);
+        } else {
+          resolve(); // give up waiting, try anyway
+        }
+      });
+
+      req.on("error", () => {
+        if (remaining > 0) {
+          setTimeout(() => attempt(remaining - 1), interval);
+        } else {
+          resolve(); // give up, let Electron try anyway
+        }
+      });
+
+      req.end();
+    }
+
+    attempt(retries);
+  });
+}
 
 /* =========================
    CREATE WINDOW
 ========================= */
-function createWindow() {
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -22,47 +61,86 @@ function createWindow() {
   });
 
   const isDev = !app.isPackaged;
-
   const devURL = "http://localhost:5173";
-
-  // ✅ FIXED PRODUCTION PATH (IMPORTANT FIX)
   const prodURL = `file://${path.join(
     process.resourcesPath,
     "client/dist/index.html"
   )}`;
 
-  const targetURL = isDev ? devURL : prodURL;
-
   console.log("APP MODE:", isDev ? "DEV" : "PROD");
-  console.log("LOADING:", targetURL);
 
-  mainWindow.loadURL(targetURL);
+  if (isDev) {
+    await waitForVite(devURL);
+    console.log("LOADING:", devURL);
+    mainWindow.loadURL(devURL);
+  } else {
+    console.log("LOADING:", prodURL);
+    mainWindow.loadURL(prodURL);
+  }
 
-  // ✅ SAFE SHOW (DON'T RELY ONLY ON ready-to-show)
   mainWindow.webContents.on("did-finish-load", () => {
     mainWindow.show();
     mainWindow.focus();
   });
 
-  // ❌ DEBUG FAILURES (VERY IMPORTANT)
   mainWindow.webContents.on("did-fail-load", (_, code, desc) => {
     console.error("❌ LOAD FAILED:", code, desc);
-    mainWindow.show(); // force window visible for debugging
+    mainWindow.show();
   });
 
   mainWindow.webContents.on("render-process-gone", (_, details) => {
     console.error("❌ RENDER CRASHED:", details);
   });
+}
 
-  // optional devtools for debugging
-  // mainWindow.webContents.openDevTools();
+/* =========================
+   EMIT TO UI
+========================= */
+function emitUpdate(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, payload);
+  }
+}
+
+/* =========================
+   SYNC RUNNER
+   Called on startup and every SYNC_INTERVAL_MS.
+========================= */
+const SYNC_INTERVAL_MS = 60_000; // 60 seconds
+
+async function runSync() {
+  if (!dbReady) return;
+
+  emitUpdate("sync:status", { syncing: true, online: true });
+
+  const result = await syncToRemote(db, (msg) => {
+    emitUpdate("sync:progress", msg);
+  });
+
+  const pending = getPendingCount(db);
+
+  emitUpdate("sync:status", {
+    syncing: false,
+    online: result.success || result.errors[0] !== "Device is offline",
+    pending,
+    lastSync: result.success ? new Date().toISOString() : null,
+    errors: result.errors,
+  });
+
+  // Refresh affected data in UI after sync
+  if (result.pushed > 0) {
+    emitUpdate("farmers:updated");
+    emitUpdate("deliveries:updated");
+    emitUpdate("payments:updated");
+    emitUpdate("beans:updated");
+  }
 }
 
 /* =========================
    APP INIT
 ========================= */
 app.whenReady().then(async () => {
-  createWindow(); // always open window first
+  await createWindow();
 
   try {
     console.log("INIT DB...");
@@ -71,10 +149,18 @@ app.whenReady().then(async () => {
     console.log("DB READY");
   } catch (err) {
     console.error("🔥 DB FAILED:", err);
+    return;
   }
+
+  // Initial sync attempt on startup
+  runSync();
+
+  // Periodic sync
+  syncInterval = setInterval(runSync, SYNC_INTERVAL_MS);
 });
 
 app.on("window-all-closed", () => {
+  if (syncInterval) clearInterval(syncInterval);
   app.quit();
 });
 
@@ -86,19 +172,29 @@ function ensureDB() {
 }
 
 /* =========================
-   UI SYNC
+   IPC — SYNC
 ========================= */
-function emitUpdate(channel) {
-  if (mainWindow) {
-    mainWindow.webContents.send(channel);
-  }
-}
+// Manual sync trigger from UI
+ipcMain.handle("sync:trigger", async () => {
+  ensureDB();
+  await runSync();
+  return { ok: true };
+});
+
+// Check if online (for UI badge)
+ipcMain.handle("sync:checkOnline", async () => {
+  return await checkOnline();
+});
+
+// How many records are waiting to sync
+ipcMain.handle("sync:pending", () => {
+  ensureDB();
+  return getPendingCount(db);
+});
 
 /* =========================
-   IPC HANDLERS
+   IPC — BEANS
 ========================= */
-
-// BEANS
 ipcMain.handle("bean:add", (_, data) => {
   ensureDB();
   const res = db.addBean(data);
@@ -118,7 +214,9 @@ ipcMain.handle("bean:delete", (_, id) => {
   return res;
 });
 
-// FARMERS
+/* =========================
+   IPC — FARMERS
+========================= */
 ipcMain.handle("farmer:add", (_, data) => {
   ensureDB();
   const res = db.addFarmer(data);
@@ -145,14 +243,14 @@ ipcMain.handle("farmer:delete", (_, id) => {
   return res;
 });
 
-// DELIVERIES
+/* =========================
+   IPC — DELIVERIES
+========================= */
 ipcMain.handle("delivery:add", (_, data) => {
   ensureDB();
   const res = db.addDelivery(data);
-
   emitUpdate("deliveries:updated");
   emitUpdate("transactions:updated");
-
   return res;
 });
 
@@ -165,28 +263,26 @@ ipcMain.handle("delivery:delete", (_, payload) => {
   ensureDB();
 
   const { id, password } = payload || {};
-
   if (!id) return { success: false, message: "Missing ID" };
 
   const ADMIN_PASSWORD = "admin123";
-
   if (password !== ADMIN_PASSWORD) {
     return { success: false, message: "Wrong password" };
   }
 
   try {
-    const res = db.deleteDelivery(id);
-
+    db.deleteDelivery(id);
     emitUpdate("deliveries:updated");
     emitUpdate("transactions:updated");
-
     return { success: true };
   } catch (err) {
     return { success: false, message: "DB error" };
   }
 });
 
-// PAYMENTS
+/* =========================
+   IPC — PAYMENTS
+========================= */
 ipcMain.handle("payment:add", (_, data) => {
   ensureDB();
 
@@ -197,7 +293,6 @@ ipcMain.handle("payment:add", (_, data) => {
 
   const res = db.addPayment(enriched);
   emitUpdate("payments:updated");
-
   return res;
 });
 
@@ -206,7 +301,9 @@ ipcMain.handle("payment:get", () => {
   return db.getPayments();
 });
 
-// TRANSACTIONS
+/* =========================
+   IPC — TRANSACTIONS
+========================= */
 ipcMain.handle("transaction:add", (_, data) => {
   ensureDB();
   const res = db.addTransaction(data);
@@ -219,7 +316,9 @@ ipcMain.handle("transaction:get", () => {
   return db.getTransactions();
 });
 
-// USERS
+/* =========================
+   IPC — USERS
+========================= */
 ipcMain.handle("user:add", (_, data) => {
   ensureDB();
   const res = db.addUser(data);
@@ -244,7 +343,9 @@ ipcMain.handle("user:delete", (_, id) => {
   return res;
 });
 
-// AUTH
+/* =========================
+   IPC — AUTH
+========================= */
 ipcMain.handle("user:login", (_, { username, password }) => {
   ensureDB();
 
@@ -252,7 +353,6 @@ ipcMain.handle("user:login", (_, { username, password }) => {
   const user = users[0];
 
   if (!user) return { success: false, message: "User not found" };
-
   if (user.password !== password) {
     return { success: false, message: "Incorrect password" };
   }
@@ -260,7 +360,9 @@ ipcMain.handle("user:login", (_, { username, password }) => {
   return { success: true, user };
 });
 
-// PRINT
+/* =========================
+   IPC — PRINT
+========================= */
 ipcMain.handle("form:print", async (_, data) => {
   try {
     const printWindow = new BrowserWindow({ show: false });
@@ -269,13 +371,10 @@ ipcMain.handle("form:print", async (_, data) => {
       <html>
         <body style="font-family: Arial; padding: 20px;">
           <h2>Form Preview</h2>
-
           <p><strong>Name:</strong> ${data.name}</p>
           <p><strong>ID:</strong> ${data.idNumber}</p>
           <p><strong>Total:</strong> ₱${data.amountInFigures}</p>
-
           <hr />
-
           <table border="1" cellpadding="5" cellspacing="0" width="100%">
             <thead>
               <tr>

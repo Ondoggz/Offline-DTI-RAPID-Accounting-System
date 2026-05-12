@@ -49,13 +49,17 @@ export const createDelivery = async (req, res) => {
       deliveryGuyContact: req.body.deliveryGuyContact,
       consigneeContact: req.body.consigneeContact,
       recordedBy: req.body.recordedBy || "Unknown User",
-      proofOfDelivery: req.file ? req.file.filename : "",
+      // proofOfDelivery can be a file upload (web) or a plain string (Electron sync)
+      proofOfDelivery: req.file ? req.file.filename : (req.body.proofOfDelivery || ""),
       volume,
       pricePerUnit,
       totalAmount,
     });
 
     await Transaction.create({
+      // ✅ Save localId from Electron so sync.js can look up this transaction later
+      // When created from the web app, localId will be undefined → saved as null (safe)
+      localId: req.body.localId || null,
       type: "DELIVERY",
       farmerName: newDelivery.farmer,
       beanType: newDelivery.beanType,

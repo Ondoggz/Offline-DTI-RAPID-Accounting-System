@@ -22,8 +22,6 @@ contextBridge.exposeInMainWorld("api", {
   ========================= */
   addDelivery: (data) => ipcRenderer.invoke("delivery:add", data),
   getDeliveries: () => ipcRenderer.invoke("delivery:get"),
-
-  // FIXED: matches your main.js expectation (payload object)
   deleteDelivery: (id, password) =>
     ipcRenderer.invoke("delivery:delete", { id, password }),
 
@@ -53,9 +51,41 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("user:login", { username, password }),
 
   /* =========================
-     OPTIONAL (RECOMMENDED ADDITION)
-     FOR REPORT / PDF PRINTING
+     PRINT
   ========================= */
-
   printForm: (data) => ipcRenderer.invoke("form:print", data),
+
+  /* =========================
+     SYNC
+  ========================= */
+  // Manually trigger a sync (e.g. from a "Sync Now" button)
+  syncNow: () => ipcRenderer.invoke("sync:trigger"),
+
+  // Check if the remote server is reachable right now
+  checkOnline: () => ipcRenderer.invoke("sync:checkOnline"),
+
+  // Get count of records not yet pushed to remote
+  getPendingCount: () => ipcRenderer.invoke("sync:pending"),
+
+  // Listen for sync status updates from the main process
+  // Returns an unsubscribe function — call it in useEffect cleanup
+  onSyncStatus: (callback) => {
+    const handler = (_, status) => callback(status);
+    ipcRenderer.on("sync:status", handler);
+    return () => ipcRenderer.removeListener("sync:status", handler);
+  },
+
+  // Listen for fine-grained sync progress messages (optional, for a log view)
+  onSyncProgress: (callback) => {
+    const handler = (_, msg) => callback(msg);
+    ipcRenderer.on("sync:progress", handler);
+    return () => ipcRenderer.removeListener("sync:progress", handler);
+  },
+
+  // Listen for data refresh events emitted after a sync completes
+  onDataUpdated: (channel, callback) => {
+    const handler = () => callback();
+    ipcRenderer.on(channel, handler);
+    return () => ipcRenderer.removeListener(channel, handler);
+  },
 });
