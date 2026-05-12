@@ -25,17 +25,24 @@ function App() {
   const timeoutRef = useRef(null);
 
   const API = import.meta.env.VITE_API_URL;
-  const token = localStorage.getItem("token");
-
-  const authHeaders = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+  const isElectron = !!window.api;
 
   const fetchBeans = async () => {
     try {
-      const res = await fetch(`${API}/api/beans`, authHeaders);
+      if (isElectron) {
+        const data = await window.api.getBeans();
+        setBeans(Array.isArray(data) ? data : []);
+        return;
+      }
+
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${API}/api/beans`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       const data = await res.json();
       setBeans(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -43,15 +50,24 @@ function App() {
     }
   };
 
-  const clearSession = () => {
+  const clearSession = async () => {
     localStorage.clear();
+
+    if (isElectron) {
+      try {
+        await window.api.logout();
+      } catch (err) {
+        console.error("Electron logout error:", err);
+      }
+    }
+
     setIsLoggedIn(false);
     setCurrentUser(null);
     setSelectedModule(null);
   };
 
   const resetInactivityTimer = () => {
-    if (!localStorage.getItem("token")) return;
+    if (!isElectron && !localStorage.getItem("token")) return;
 
     localStorage.setItem("lastActivity", Date.now().toString());
 
@@ -62,6 +78,27 @@ function App() {
 
   useEffect(() => {
     const init = async () => {
+      if (isElectron) {
+        try {
+          const session = await window.api.getSession();
+
+          if (session?.user) {
+            setIsLoggedIn(true);
+            setCurrentUser(session.user);
+          }
+
+          setMessage("Backend connected successfully");
+          setDbTime(new Date().toISOString());
+
+          await fetchBeans();
+        } catch (err) {
+          console.error("Electron init error:", err);
+          setMessage("Local database connection failed");
+        }
+
+        return;
+      }
+
       const savedToken = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
       const lastActivity = localStorage.getItem("lastActivity");
@@ -107,7 +144,7 @@ function App() {
     const events = ["mousemove", "keydown", "click", "scroll"];
 
     const handleActivity = () => {
-      if (localStorage.getItem("token")) {
+      if (isElectron || localStorage.getItem("token")) {
         resetInactivityTimer();
       }
     };
@@ -115,18 +152,16 @@ function App() {
     events.forEach((e) => window.addEventListener(e, handleActivity));
 
     return () => {
-      events.forEach((e) =>
-        window.removeEventListener(e, handleActivity)
-      );
+      events.forEach((e) => window.removeEventListener(e, handleActivity));
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = async (user) => {
     setIsLoggedIn(true);
     setCurrentUser(user);
     resetInactivityTimer();
-    fetchBeans();
+    await fetchBeans();
   };
 
   const handleLogout = () => clearSession();

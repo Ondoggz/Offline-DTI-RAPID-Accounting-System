@@ -1,11 +1,12 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
 export async function authFetch(endpoint, options = {}) {
-  // ✅ Get token from main process, not localStorage
-  const session = await window.api.getSession();
-  const token = session?.token || null;
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("offline-token");
 
   let url = endpoint;
+
   if (!url.startsWith("http")) {
     url = `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
   }
@@ -20,7 +21,11 @@ export async function authFetch(endpoint, options = {}) {
   });
 
   if (res.status === 401) {
-    await window.api.logout();
+    localStorage.removeItem("token");
+    localStorage.removeItem("offline-token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("lastActivity");
+
     window.location.reload();
   }
 

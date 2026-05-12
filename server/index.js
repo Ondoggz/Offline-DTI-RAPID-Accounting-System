@@ -37,8 +37,8 @@ app.get("/api", (req, res) => {
 });
 
 /* Routes */
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
 app.use("/api/beans", beanRoutes);
 app.use("/api/farmers", farmerRoutes);
 app.use("/api/deliveries", deliveryRoutes);

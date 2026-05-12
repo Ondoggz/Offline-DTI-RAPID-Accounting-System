@@ -6,7 +6,8 @@ export default function Login({ onLoginSuccess }) {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,16 +21,11 @@ export default function Login({ onLoginSuccess }) {
         return;
       }
 
-      if (!data.token) {
-        alert("Login succeeded but no token was returned.");
-        return;
-      }
-
-      // Token is already stored in main process — nothing to save here
+      // Electron offline login does not need a frontend token.
       onLoginSuccess(data.user);
     } catch (error) {
       console.error("LOGIN ERROR:", error);
-      alert("Server error");
+      alert("Login error");
     } finally {
       setLoading(false);
     }
@@ -41,7 +37,9 @@ export default function Login({ onLoginSuccess }) {
         <div className="login-logo-section">
           <img src={dtiLogo} alt="DTI Logo" className="login-logo" />
         </div>
+
         <p className="login-label">Login</p>
+
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -51,6 +49,7 @@ export default function Login({ onLoginSuccess }) {
             onChange={handleChange}
             required
           />
+
           <input
             type="password"
             name="password"
@@ -59,6 +58,7 @@ export default function Login({ onLoginSuccess }) {
             onChange={handleChange}
             required
           />
+
           <button type="submit" disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </button>

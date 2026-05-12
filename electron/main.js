@@ -1,35 +1,38 @@
 const path = require("path");
-const { pathToFileURL } = require("url");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const { app, BrowserWindow, ipcMain } = require("electron");
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const db = require("./db");
 const { syncToRemote, checkOnline, getPendingCount } = require("./sync");
 
 let dbReady = false;
 let mainWindow = null;
-let sessionToken = null;
+let syncInterval = null;
 let sessionUser = null;
 
 /* =========================
-   WAIT FOR VITE (DEV ONLY)
+   WAIT FOR VITE
 ========================= */
 function waitForVite(url, retries = 20, interval = 500) {
   return new Promise((resolve) => {
     const http = require("http");
+
     function attempt(remaining) {
       const req = http.get(url, (res) => {
         if (res.statusCode < 500) resolve();
         else if (remaining > 0) setTimeout(() => attempt(remaining - 1), interval);
         else resolve();
       });
+
       req.on("error", () => {
         if (remaining > 0) setTimeout(() => attempt(remaining - 1), interval);
         else resolve();
       });
+
       req.end();
     }
+
     attempt(retries);
   });
 }
@@ -51,16 +54,19 @@ async function createWindow() {
 
   const isDev = !app.isPackaged;
   const devURL = "http://localhost:5173";
-
-  const prodPath = path.join(process.resourcesPath, "client/dist/index.html");
-  const prodURL = pathToFileURL(prodPath).toString();
+  const prodURL = `file://${path.join(
+    process.resourcesPath,
+    "client/dist/index.html"
+  )}`;
 
   console.log("APP MODE:", isDev ? "DEV" : "PROD");
 
   if (isDev) {
     await waitForVite(devURL);
+    console.log("LOADING:", devURL);
     mainWindow.loadURL(devURL);
   } else {
+    console.log("LOADING:", prodURL);
     mainWindow.loadURL(prodURL);
   }
 
@@ -68,166 +74,107 @@ async function createWindow() {
     mainWindow.show();
     mainWindow.focus();
   });
+
+  mainWindow.webContents.on("did-fail-load", (_, code, desc) => {
+    console.error("❌ LOAD FAILED:", code, desc);
+    mainWindow.show();
+  });
+
+  mainWindow.webContents.on("render-process-gone", (_, details) => {
+    console.error("❌ RENDER CRASHED:", details);
+  });
 }
 
 /* =========================
-   DB SAFETY
+   HELPERS
 ========================= */
 function ensureDB() {
   if (!dbReady) throw new Error("Database not ready");
 }
 
+function emitUpdate(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, payload);
+  }
+}
+
 /* =========================
-   IPC — AUTH
+   SYNC RUNNER
 ========================= */
-ipcMain.handle("user:login", (_, { username, password }) => {
-  ensureDB();
-  const users = db.getUserByUsername(username);
-  const user = users[0];
+const SYNC_INTERVAL_MS = 10_000;
 
-  if (!user) return { success: false, message: "User not found" };
-  if (user.password !== password) return { success: false, message: "Incorrect password" };
+async function runSync() {
+  if (!dbReady) {
+    return {
+      success: false,
+      pushed: 0,
+      failed: 0,
+      errors: ["Database not ready"],
+    };
+  }
 
-  const safeUser = { ...user };
-  delete safeUser.password;
+  emitUpdate("sync:status", { syncing: true, online: true });
 
-  const token = jwt.sign(safeUser, process.env.JWT_SECRET, { expiresIn: "1d" });
+  const result = await syncToRemote(db, (msg) => {
+    console.log("[SYNC PROGRESS]", msg);
+    emitUpdate("sync:progress", msg);
+  });
 
-  sessionToken = token;
-  sessionUser = safeUser;
+  console.log("[SYNC RESULT]", result);
 
-  return { success: true, user: safeUser, token };
-});
+  const pending = getPendingCount(db);
 
-ipcMain.handle("user:session", () => {
-  return sessionToken ? { token: sessionToken, user: sessionUser } : null;
-});
+  emitUpdate("sync:status", {
+    syncing: false,
+    online: result.success || result.errors?.[0] !== "Device is offline",
+    pending,
+    lastSync: result.success ? new Date().toISOString() : null,
+    errors: result.errors || [],
+  });
 
-ipcMain.handle("user:logout", () => {
-  sessionToken = null;
-  sessionUser = null;
-  return { success: true };
-});
+  if (result.pushed > 0) {
+    emitUpdate("farmers:updated");
+    emitUpdate("deliveries:updated");
+    emitUpdate("payments:updated");
+    emitUpdate("beans:updated");
+    emitUpdate("transactions:updated");
+  }
+
+  return result;
+}
 
 /* =========================
-   IPC — USERS
+   APP INIT
 ========================= */
-ipcMain.handle("user:get", () => {
-  ensureDB();
-  return db.getUsers();
+app.whenReady().then(async () => {
+  await createWindow();
+
+  try {
+    console.log("INIT DB...");
+    await db.initDB();
+    dbReady = true;
+    console.log("DB READY");
+  } catch (err) {
+    console.error("🔥 DB FAILED:", err);
+    return;
+  }
+
+  runSync();
+  syncInterval = setInterval(runSync, SYNC_INTERVAL_MS);
 });
 
-ipcMain.handle("user:add", (_, userData) => {
-  ensureDB();
-  return db.addUser(userData);
-});
-
-ipcMain.handle("user:find", (_, username) => {
-  ensureDB();
-  return db.getUserByUsername(username);
-});
-
-ipcMain.handle("user:delete", (_, id) => {
-  ensureDB();
-  return db.deleteUser(id);
-});
-
-/* =========================
-   IPC — BEANS
-========================= */
-ipcMain.handle("bean:get", () => {
-  ensureDB();
-  return db.getBeans();
-});
-
-ipcMain.handle("bean:add", (_, beanData) => {
-  ensureDB();
-  return db.addBean(beanData);
-});
-
-ipcMain.handle("bean:delete", (_, id) => {
-  ensureDB();
-  return db.deleteBean(id);
+app.on("window-all-closed", () => {
+  if (syncInterval) clearInterval(syncInterval);
+  app.quit();
 });
 
 /* =========================
-   IPC — FARMERS
-========================= */
-ipcMain.handle("farmer:get", () => {
-  ensureDB();
-  return db.getFarmers();
-});
-
-ipcMain.handle("farmer:add", (_, farmerData) => {
-  ensureDB();
-  return db.addFarmer(farmerData);
-});
-
-ipcMain.handle("farmer:update", (_, { id, data }) => {
-  ensureDB();
-  return db.updateFarmer(id, data);
-});
-
-ipcMain.handle("farmer:delete", (_, id) => {
-  ensureDB();
-  return db.deleteFarmer(id);
-});
-
-/* =========================
-   IPC — DELIVERIES
-========================= */
-ipcMain.handle("delivery:get", () => {
-  ensureDB();
-  return db.getDeliveries();
-});
-
-ipcMain.handle("delivery:add", (_, deliveryData) => {
-  ensureDB();
-  return db.addDelivery(deliveryData);
-});
-
-ipcMain.handle("delivery:delete", (_, { id, password }) => {
-  ensureDB();
-  return db.deleteDelivery(id, password);
-});
-
-/* =========================
-   IPC — PAYMENTS
-========================= */
-ipcMain.handle("payment:get", () => {
-  ensureDB();
-  return db.getPayments();
-});
-
-ipcMain.handle("payment:add", (_, paymentData) => {
-  ensureDB();
-  return db.addPayment(paymentData);
-});
-
-/* =========================
-   IPC — TRANSACTIONS
-========================= */
-ipcMain.handle("transaction:get", () => {
-  ensureDB();
-  return db.getTransactions();
-});
-
-/* =========================
-   PRINT
-========================= */
-ipcMain.handle("form:print", (_, data) => {
-  console.log("[PRINT]", data);
-  return { success: true };
-});
-
-/* =========================
-   SYNC
+   IPC — SYNC
 ========================= */
 ipcMain.handle("sync:trigger", async () => {
   ensureDB();
-  return await syncToRemote(db, (msg) => {
-    mainWindow?.webContents.send("sync:progress", msg);
-  });
+  console.log("[IPC] sync:trigger called");
+  return await runSync();
 });
 
 ipcMain.handle("sync:checkOnline", async () => {
@@ -240,10 +187,246 @@ ipcMain.handle("sync:pending", () => {
 });
 
 /* =========================
-   APP INIT
+   IPC — AUTH
 ========================= */
-app.whenReady().then(async () => {
-  await createWindow();
-  await db.initDB();
-  dbReady = true;
+ipcMain.handle("user:login", (_, { username, password }) => {
+  ensureDB();
+
+  const users = db.getUserByUsername(username);
+  const user = users[0];
+
+  if (!user) return { success: false, message: "User not found" };
+
+  if (user.password !== password) {
+    return { success: false, message: "Incorrect password" };
+  }
+
+  const safeUser = { ...user };
+  delete safeUser.password;
+
+  sessionUser = safeUser;
+
+  return { success: true, user: safeUser };
+});
+
+ipcMain.handle("user:session", () => {
+  return sessionUser ? { user: sessionUser } : null;
+});
+
+ipcMain.handle("user:logout", () => {
+  sessionUser = null;
+  return { success: true };
+});
+
+/* =========================
+   IPC — USERS
+========================= */
+ipcMain.handle("user:add", (_, data) => {
+  ensureDB();
+  const res = db.addUser(data);
+  emitUpdate("users:updated");
+  return res;
+});
+
+ipcMain.handle("user:get", () => {
+  ensureDB();
+  return db.getUsers();
+});
+
+ipcMain.handle("user:find", (_, username) => {
+  ensureDB();
+  return db.getUserByUsername(username);
+});
+
+ipcMain.handle("user:delete", (_, id) => {
+  ensureDB();
+  const res = db.deleteUser(id);
+  emitUpdate("users:updated");
+  return res;
+});
+
+/* =========================
+   IPC — BEANS
+========================= */
+ipcMain.handle("bean:add", (_, data) => {
+  ensureDB();
+  const res = db.addBean(data);
+  emitUpdate("beans:updated");
+  return res;
+});
+
+ipcMain.handle("bean:get", () => {
+  ensureDB();
+  return db.getBeans();
+});
+
+ipcMain.handle("bean:delete", (_, id) => {
+  ensureDB();
+  const res = db.deleteBean(id);
+  emitUpdate("beans:updated");
+  return res;
+});
+
+/* =========================
+   IPC — FARMERS
+========================= */
+ipcMain.handle("farmer:add", (_, data) => {
+  ensureDB();
+  const res = db.addFarmer(data);
+  emitUpdate("farmers:updated");
+  return res;
+});
+
+ipcMain.handle("farmer:get", () => {
+  ensureDB();
+  return db.getFarmers();
+});
+
+ipcMain.handle("farmer:update", (_, { id, data }) => {
+  ensureDB();
+  const res = db.updateFarmer(id, data);
+  emitUpdate("farmers:updated");
+  return res;
+});
+
+ipcMain.handle("farmer:delete", (_, id) => {
+  ensureDB();
+  const res = db.deleteFarmer(id);
+  emitUpdate("farmers:updated");
+  return res;
+});
+
+/* =========================
+   IPC — DELIVERIES
+========================= */
+ipcMain.handle("delivery:add", (_, data) => {
+  ensureDB();
+  const res = db.addDelivery(data);
+  emitUpdate("deliveries:updated");
+  emitUpdate("transactions:updated");
+  return res;
+});
+
+ipcMain.handle("delivery:get", () => {
+  ensureDB();
+  return db.getDeliveries();
+});
+
+ipcMain.handle("delivery:delete", (_, payload) => {
+  ensureDB();
+
+  const { id, password } = payload || {};
+  if (!id) return { success: false, message: "Missing ID" };
+
+  const ADMIN_PASSWORD = process.env.ADMIN_DELETE_PASSWORD || "admin123";
+
+  if (password !== ADMIN_PASSWORD) {
+    return { success: false, message: "Wrong password" };
+  }
+
+  try {
+    const res = db.deleteDelivery(id);
+    emitUpdate("deliveries:updated");
+    emitUpdate("transactions:updated");
+    return { success: true, result: res };
+  } catch (err) {
+    console.error("DELETE DELIVERY ERROR:", err);
+    return { success: false, message: "DB error" };
+  }
+});
+
+/* =========================
+   IPC — PAYMENTS
+========================= */
+ipcMain.handle("payment:add", (_, data) => {
+  ensureDB();
+
+  const enriched = {
+    ...data,
+    id: data.id || crypto.randomUUID(),
+  };
+
+  const res = db.addPayment(enriched);
+  emitUpdate("payments:updated");
+  emitUpdate("transactions:updated");
+  return res;
+});
+
+ipcMain.handle("payment:get", () => {
+  ensureDB();
+  return db.getPayments();
+});
+
+/* =========================
+   IPC — TRANSACTIONS
+========================= */
+ipcMain.handle("transaction:add", (_, data) => {
+  ensureDB();
+  const res = db.addTransaction(data);
+  emitUpdate("transactions:updated");
+  return res;
+});
+
+ipcMain.handle("transaction:get", () => {
+  ensureDB();
+  return db.getTransactions();
+});
+
+/* =========================
+   IPC — PRINT
+========================= */
+ipcMain.handle("form:print", async (_, data) => {
+  try {
+    const printWindow = new BrowserWindow({ show: false });
+
+    const html = `
+      <html>
+        <body style="font-family: Arial; padding: 20px;">
+          <h2>Form Preview</h2>
+          <p><strong>Name:</strong> ${data.name}</p>
+          <p><strong>ID:</strong> ${data.idNumber}</p>
+          <p><strong>Total:</strong> ₱${data.amountInFigures}</p>
+          <hr />
+          <table border="1" cellpadding="5" cellspacing="0" width="100%">
+            <thead>
+              <tr>
+                <th>Particulars</th>
+                <th>Volume</th>
+                <th>Unit Cost</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(data.rows || [])
+                .map(
+                  (r) => `
+                    <tr>
+                      <td>${r.particulars}</td>
+                      <td>${r.volume}</td>
+                      <td>${r.unitCost}</td>
+                      <td>${r.totalAmount}</td>
+                    </tr>
+                  `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    await printWindow.loadURL(
+      "data:text/html;charset=utf-8," + encodeURIComponent(html)
+    );
+
+    const pdf = await printWindow.webContents.printToPDF({
+      printBackground: true,
+    });
+
+    printWindow.close();
+    return pdf;
+  } catch (err) {
+    console.error("PRINT ERROR:", err);
+    throw err;
+  }
 });
