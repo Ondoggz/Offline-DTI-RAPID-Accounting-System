@@ -158,10 +158,13 @@ function App() {
   }, []);
 
   const handleLoginSuccess = async (user) => {
-    setIsLoggedIn(true);
-    setCurrentUser(user);
-    resetInactivityTimer();
-    await fetchBeans();
+  setIsLoggedIn(true);
+  setCurrentUser(user);
+
+  localStorage.setItem("user", JSON.stringify(user));
+
+  resetInactivityTimer();
+  await fetchBeans();
   };
 
   const handleLogout = () => clearSession();

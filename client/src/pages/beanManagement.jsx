@@ -21,7 +21,7 @@ function BeanManagement({ beans, setBeans }) {
           name: bean.beanName,
           pricePerUnit: bean.pricePerUnit,
           unit: bean.unit,
-          farmers: bean.farmers || [],
+          farmers: Array.isArray(bean.farmers) ? bean.farmers : [],
         }));
 
         setBeans(mapped);
@@ -81,7 +81,7 @@ function BeanManagement({ beans, setBeans }) {
           name: bean.beanName,
           pricePerUnit: bean.pricePerUnit,
           unit: bean.unit,
-          farmers: bean.farmers || [],
+          farmers: Array.isArray(bean.farmers) ? bean.farmers : [],
         }))
       );
 
@@ -102,28 +102,28 @@ function BeanManagement({ beans, setBeans }) {
   };
 
   // 🔥 DELETE (LOCAL IPC - you will need db.deleteBean later)
-const handleDelete = async (id) => {
-  const confirmed = window.confirm("Are you sure you want to delete this bean?");
-  if (!confirmed) return;
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm("Are you sure you want to delete this bean?");
+    if (!confirmed) return;
 
-  try {
-    await window.api.deleteBean(id);
+    try {
+      await window.api.deleteBean(id);
 
-    const updated = await window.api.getBeans();
+      const updated = await window.api.getBeans();
 
-    setBeans(
-      updated.map((bean) => ({
-        id: bean.id,
-        name: bean.beanName,
-        pricePerUnit: bean.pricePerUnit,
-        unit: bean.unit,
-        farmers: bean.farmers || [],
-      }))
-    );
-  } catch (err) {
-    console.error("Delete failed:", err);
-  }
-};
+      setBeans(
+        updated.map((bean) => ({
+          id: bean.id,
+          name: bean.beanName,
+          pricePerUnit: bean.pricePerUnit,
+          unit: bean.unit,
+          farmers: Array.isArray(bean.farmers) ? bean.farmers : [],
+        }))
+      );
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
 
   return (
     <div style={{ padding: "20px" }}>
@@ -196,8 +196,8 @@ const handleDelete = async (id) => {
                 <td>{bean.pricePerUnit}</td>
                 <td>{bean.unit}</td>
                 <td>
-                  {bean.farmers.length
-                    ? bean.farmers.map((f) => f.name).join(", ")
+                  {Array.isArray(bean.farmers) && bean.farmers.length > 0
+                    ? bean.farmers.map((f) => f.name || f).join(", ")
                     : "No farmers"}
                 </td>
                 <td>
