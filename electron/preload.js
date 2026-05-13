@@ -78,4 +78,6 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on(channel, handler);
     return () => ipcRenderer.removeListener(channel, handler);
   },
+
+  getTemplate: () => ipcRenderer.invoke("docx:getTemplate")
 });

@@ -326,10 +326,32 @@ function addDelivery(d) {
   const now = new Date().toISOString();
   const total = (d.volume || 0) * (d.pricePerUnit || 0);
 
-  run(
-    `INSERT INTO deliveries VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0
-    )`,
+    run(
+    `INSERT INTO deliveries (
+      id, farmer, farmerContact, beanType, courier, date,
+      deliveryGuy, consignee, deliveryGuyContact, consigneeContact,
+      proofOfDelivery, recordedBy, volume, pricePerUnit,
+      totalAmount, createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    ON CONFLICT(id) DO UPDATE SET
+      farmer = excluded.farmer,
+      farmerContact = excluded.farmerContact,
+      beanType = excluded.beanType,
+      courier = excluded.courier,
+      date = excluded.date,
+      deliveryGuy = excluded.deliveryGuy,
+      consignee = excluded.consignee,
+      deliveryGuyContact = excluded.deliveryGuyContact,
+      consigneeContact = excluded.consigneeContact,
+      proofOfDelivery = excluded.proofOfDelivery,
+      recordedBy = excluded.recordedBy,
+      volume = excluded.volume,
+      pricePerUnit = excluded.pricePerUnit,
+      totalAmount = excluded.totalAmount,
+      updatedAt = excluded.updatedAt,
+      synced = 0
+    `,
     [
       d.id,
       d.farmer,

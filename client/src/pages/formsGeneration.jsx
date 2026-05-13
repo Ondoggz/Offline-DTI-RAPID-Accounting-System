@@ -148,36 +148,33 @@ function FormsGeneration() {
   /* =========================
      EXPORT DOCX
   ========================= */
-  const exportDocx = async () => {
-    if (!validateForm()) return;
+const exportDocx = async () => {
+  if (!validateForm()) return;
 
-    try {
-      const response = await fetch(
-        window.location.origin + "/templates/Sample_Palamboon.docx"
-      );
-      const content = await response.arrayBuffer();
+  try {
+    const content = await window.api.getTemplate(); // 👈 NO FETCH
 
-      const zip = new PizZip(content);
+    const zip = new PizZip(content);
 
-      const doc = new Docxtemplater(zip, {
-        paragraphLoop: true,
-        linebreaks: true,
-      });
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
 
-      doc.render(buildDocData());
+    doc.render(buildDocData());
 
-      const blob = doc.getZip().generate({
-        type: "blob",
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
+    const blob = doc.getZip().generate({
+      type: "blob",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
 
-      saveAs(blob, `Form-${selectedFarmer?.name || "output"}.docx`);
-    } catch (err) {
-      console.error(err);
-      alert("DOCX generation failed.");
-    }
-  };
+    saveAs(blob, `Form-${selectedFarmer?.name || "output"}.docx`);
+  } catch (err) {
+    console.error(err);
+    alert("DOCX generation failed.");
+  }
+};
 
   return (
     <div style={{ padding: "20px" }}>

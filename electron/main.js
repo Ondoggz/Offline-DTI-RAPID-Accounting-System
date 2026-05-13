@@ -2,6 +2,7 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const { app, BrowserWindow, ipcMain } = require("electron");
+const fs = require("fs");
 const crypto = require("crypto");
 const db = require("./db");
 const { syncToRemote, checkOnline, getPendingCount } = require("./sync");
@@ -155,7 +156,7 @@ app.whenReady().then(async () => {
     dbReady = true;
     console.log("DB READY");
   } catch (err) {
-    console.error("🔥 DB FAILED:", err);
+    console.error("DB FAILED:", err);
     return;
   }
 
@@ -429,4 +430,15 @@ ipcMain.handle("form:print", async (_, data) => {
     console.error("PRINT ERROR:", err);
     throw err;
   }
+});
+
+ipcMain.handle("docx:getTemplate", () => {
+  const templatePath = path.join(
+    app.getAppPath(),
+    "electron",
+    "assets",
+    "Sample_Palamboon.docx"
+  );
+
+  return fs.readFileSync(templatePath);
 });

@@ -22,7 +22,7 @@
       "package.json"
     ],
     "asar": false,
-    "extraResources": [
+        "extraResources": [
       {
         "from": "client/dist",
         "to": "client/dist"
@@ -30,6 +30,10 @@
       {
         "from": "node_modules/sql.js/dist",
         "to": "sqljs"
+      },
+      {
+        "from": "electron/assets",
+        "to": "assets"
       }
     ],
     "win": {
