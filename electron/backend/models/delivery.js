@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const deliverySchema = new mongoose.Schema(
   {
+    localId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
     farmer: {
       type: String,
       required: true,
@@ -68,8 +74,8 @@ const deliverySchema = new mongoose.Schema(
       min: 0,
     },
   },
-  
   { timestamps: true }
 );
 
-export default mongoose.model("Delivery", deliverySchema);
+export default mongoose.models.Delivery ||
+  mongoose.model("Delivery", deliverySchema);

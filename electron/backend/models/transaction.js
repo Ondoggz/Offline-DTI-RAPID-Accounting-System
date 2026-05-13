@@ -2,11 +2,10 @@ import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
   {
-    // Stores the local SQLite UUID from the Electron app.
-    // Used by sync.js to resolve deliveryId for payments.
     localId: {
       type: String,
       default: null,
+      index: true,
     },
 
     farmerName: {
@@ -46,9 +45,11 @@ const transactionSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null,
     },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Transaction", transactionSchema);
+export default mongoose.models.Transaction ||
+  mongoose.model("Transaction", transactionSchema);

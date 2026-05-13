@@ -2,6 +2,8 @@
  * sync.js — Offline-first sync engine
  *
  * Pushes locally-created records (synced = 0) to the remote web app.
+ * Pulls remote records back into local SQLite.
+ *
  * Tables synced: beans, farmers, deliveries, payments.
  */
 
@@ -197,6 +199,75 @@ function cleanPayload(obj) {
   return cleaned;
 }
 
+function getRemoteIdFromResponse(body) {
+  return (
+    body?._id ||
+    body?.id ||
+    body?.data?._id ||
+    body?.data?.id ||
+    body?.bean?._id ||
+    body?.farmer?._id ||
+    body?.delivery?._id ||
+    body?.payment?._id ||
+    null
+  );
+}
+
+function toIso(value) {
+  if (!value) return new Date().toISOString();
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return date.toISOString();
+}
+
+function isRemoteNewer(remoteUpdatedAt, localUpdatedAt) {
+  if (!localUpdatedAt) return true;
+  if (!remoteUpdatedAt) return false;
+
+  const remoteTime = new Date(remoteUpdatedAt).getTime();
+  const localTime = new Date(localUpdatedAt).getTime();
+
+  if (Number.isNaN(remoteTime)) return false;
+  if (Number.isNaN(localTime)) return true;
+
+  return remoteTime > localTime;
+}
+
+function findLocalByRemoteOrLocalId(db, table, remote) {
+  const remoteId = remote?._id ? String(remote._id) : "";
+  const localId = remote?.localId ? String(remote.localId) : "";
+
+  if (localId) {
+    const byLocalId = db.all(`SELECT * FROM ${table} WHERE id = ?`, [localId]);
+    if (byLocalId[0]) return byLocalId[0];
+  }
+
+  if (remoteId) {
+    const byRemoteId = db.all(`SELECT * FROM ${table} WHERE remoteId = ?`, [
+      remoteId,
+    ]);
+    if (byRemoteId[0]) return byRemoteId[0];
+  }
+
+  return null;
+}
+
+function shouldApplyRemote(localRow, remoteRow) {
+  if (!localRow) return true;
+
+  // If local has unsynced changes and remote is not newer, do not overwrite local work.
+  if (Number(localRow.synced) === 0) {
+    return isRemoteNewer(remoteRow.updatedAt, localRow.updatedAt);
+  }
+
+  return isRemoteNewer(remoteRow.updatedAt, localRow.updatedAt);
+}
+
 /* =========================
    REMOTE LOOKUPS
 ========================= */
@@ -221,6 +292,10 @@ async function fetchRemoteBeanMap() {
       if (bean.localId && bean._id) {
         map[String(bean.localId)] = bean._id;
       }
+
+      if (bean._id) {
+        map[String(bean._id)] = bean._id;
+      }
     }
 
     console.log(`[SYNC] Bean map loaded: ${Object.keys(map).length}`);
@@ -232,7 +307,7 @@ async function fetchRemoteBeanMap() {
 }
 
 async function fetchRemoteDeliveryMap() {
-  const endpoints = ["/api/deliveries", "/api/transactions"];
+  const endpoints = ["/api/transactions", "/api/deliveries"];
 
   for (const endpoint of endpoints) {
     try {
@@ -269,6 +344,40 @@ async function fetchRemoteDeliveryMap() {
   return {};
 }
 
+async function fetchRemoteTransactionMaps() {
+  const result = {
+    localToRemote: {},
+    remoteToLocal: {},
+  };
+
+  try {
+    const res = await remoteRequest("GET", "/api/transactions");
+
+    if (res.status !== 200) {
+      console.warn("[SYNC] Could not fetch remote transactions:", res.status, res.body);
+      return result;
+    }
+
+    const list = firstArray(res.body);
+
+    for (const tx of list) {
+      if (tx.localId && tx._id) {
+        result.localToRemote[String(tx.localId).trim()] = String(tx._id);
+        result.remoteToLocal[String(tx._id).trim()] = String(tx.localId);
+      }
+    }
+
+    console.log(
+      `[SYNC] Transaction maps loaded: localToRemote=${Object.keys(result.localToRemote).length}, remoteToLocal=${Object.keys(result.remoteToLocal).length}`
+    );
+
+    return result;
+  } catch (err) {
+    console.warn("[SYNC] fetchRemoteTransactionMaps error:", err.message);
+    return result;
+  }
+}
+
 /* =========================
    SYNC TARGETS
 ========================= */
@@ -276,10 +385,16 @@ function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
   return [
     {
       label: "beans",
+      table: "beans",
       remotePath: "/api/beans",
       getUnsynced: () => db.all(`SELECT * FROM beans WHERE synced = 0`),
-      markSynced: (id) =>
-        db.run(`UPDATE beans SET synced = 1 WHERE id = ?`, [id]),
+      markSynced: (id, remoteId) => {
+        if (db.markRemoteSynced && remoteId) {
+          db.markRemoteSynced("beans", id, remoteId);
+        } else {
+          db.run(`UPDATE beans SET synced = 1 WHERE id = ?`, [id]);
+        }
+      },
       toPayload: (row) =>
         cleanPayload({
           localId: row.id,
@@ -293,10 +408,16 @@ function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
 
     {
       label: "farmers",
+      table: "farmers",
       remotePath: "/api/farmers",
       getUnsynced: () => db.all(`SELECT * FROM farmers WHERE synced = 0`),
-      markSynced: (id) =>
-        db.run(`UPDATE farmers SET synced = 1 WHERE id = ?`, [id]),
+      markSynced: (id, remoteId) => {
+        if (db.markRemoteSynced && remoteId) {
+          db.markRemoteSynced("farmers", id, remoteId);
+        } else {
+          db.run(`UPDATE farmers SET synced = 1 WHERE id = ?`, [id]);
+        }
+      },
       toPayload: (row) => {
         const localBeans = safeJsonParse(row.beans, []);
 
@@ -311,7 +432,9 @@ function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
             if (!localBean) return null;
 
             const beanName = localBean.beanName || localBean.name;
+
             return (
+              localBean.remoteId ||
               beanMap[String(localBeanId)] ||
               beanMap[normalizeKey(beanName)] ||
               null
@@ -338,10 +461,16 @@ function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
 
     {
       label: "deliveries",
+      table: "deliveries",
       remotePath: "/api/deliveries",
       getUnsynced: () => db.all(`SELECT * FROM deliveries WHERE synced = 0`),
-      markSynced: (id) =>
-        db.run(`UPDATE deliveries SET synced = 1 WHERE id = ?`, [id]),
+      markSynced: (id, remoteId) => {
+        if (db.markRemoteSynced && remoteId) {
+          db.markRemoteSynced("deliveries", id, remoteId);
+        } else {
+          db.run(`UPDATE deliveries SET synced = 1 WHERE id = ?`, [id]);
+        }
+      },
       toPayload: (row) =>
         cleanPayload({
           localId: row.id,
@@ -366,14 +495,31 @@ function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
 
     {
       label: "payments",
+      table: "payments",
       remotePath: "/api/payments",
       getUnsynced: () => db.all(`SELECT * FROM payments WHERE synced = 0`),
-      markSynced: (id) =>
-        db.run(`UPDATE payments SET synced = 1 WHERE id = ?`, [id]),
+      markSynced: (id, remoteId) => {
+        if (db.markRemoteSynced && remoteId) {
+          db.markRemoteSynced("payments", id, remoteId);
+        } else {
+          db.run(`UPDATE payments SET synced = 1 WHERE id = ?`, [id]);
+        }
+      },
       toPayload: (row) => {
         const localDeliveryId = String(row.deliveryId || "").trim();
+
+        const localDeliveryRows = db.all(
+          `SELECT * FROM deliveries WHERE id = ?`,
+          [localDeliveryId]
+        );
+
+        const localDelivery = localDeliveryRows[0];
+
         const remoteDeliveryId =
-          deliveryMap[localDeliveryId] || row.remoteDeliveryId || row.deliveryId;
+          deliveryMap[localDeliveryId] ||
+          localDelivery?.remoteId ||
+          row.remoteDeliveryId ||
+          row.deliveryId;
 
         return cleanPayload({
           localId: row.id,
@@ -391,11 +537,10 @@ function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
 }
 
 /* =========================
-   MAIN SYNC
+   PUSH TO REMOTE
 ========================= */
-async function syncToRemote(db, onProgress = null) {
+async function pushToRemote(db, onProgress = null) {
   const result = {
-    success: true,
     pushed: 0,
     failed: 0,
     errors: [],
@@ -405,33 +550,6 @@ async function syncToRemote(db, onProgress = null) {
     console.log(`[SYNC] ${msg}`);
     if (onProgress) onProgress(msg);
   };
-
-  notify("Starting sync...");
-  notify(`Remote: ${REMOTE_BASE_URL}`);
-
-  const online = await checkOnline();
-
-  if (!online) {
-    notify("Offline — sync skipped");
-    return {
-      ...result,
-      success: false,
-      errors: ["Device is offline"],
-    };
-  }
-
-  notify("Online — authenticating...");
-
-  const loggedIn = await loginToRemote();
-
-  if (!loggedIn) {
-    notify("Auth failed — sync aborted");
-    return {
-      ...result,
-      success: false,
-      errors: ["Could not authenticate with remote server"],
-    };
-  }
 
   const beanMap = await fetchRemoteBeanMap();
   const deliveryMap = await fetchRemoteDeliveryMap();
@@ -468,7 +586,9 @@ async function syncToRemote(db, onProgress = null) {
         console.log("[SYNC RESPONSE]", target.label, row.id, res.status, res.body);
 
         if (res.status >= 200 && res.status < 300) {
-          target.markSynced(row.id);
+          const remoteId = getRemoteIdFromResponse(res.body);
+          target.markSynced(row.id, remoteId);
+
           result.pushed++;
           notify(`${target.label} [${row.id}] ✓ pushed`);
         } else {
@@ -490,9 +610,420 @@ async function syncToRemote(db, onProgress = null) {
     }
   }
 
+  return result;
+}
+
+/* =========================
+   PULL UPSERT HELPERS
+========================= */
+function upsertRemoteBean(db, bean) {
+  const localId = String(bean.localId || bean._id || "").trim();
+  const remoteId = String(bean._id || "").trim();
+
+  if (!localId || !remoteId) return false;
+
+  const existing = findLocalByRemoteOrLocalId(db, "beans", bean);
+
+  if (!shouldApplyRemote(existing, bean)) return false;
+
+  db.run(
+    `
+    INSERT INTO beans (
+      id, remoteId, beanName, pricePerUnit, unit,
+      createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(id) DO UPDATE SET
+      remoteId = excluded.remoteId,
+      beanName = excluded.beanName,
+      pricePerUnit = excluded.pricePerUnit,
+      unit = excluded.unit,
+      createdAt = excluded.createdAt,
+      updatedAt = excluded.updatedAt,
+      synced = 1
+    `,
+    [
+      localId,
+      remoteId,
+      bean.beanName || bean.name || "",
+      Number(bean.pricePerUnit || 0),
+      bean.unit || "kg",
+      toIso(bean.createdAt),
+      toIso(bean.updatedAt),
+    ]
+  );
+
+  return true;
+}
+
+function upsertRemoteFarmer(db, farmer) {
+  const localId = String(farmer.localId || farmer._id || "").trim();
+  const remoteId = String(farmer._id || "").trim();
+
+  if (!localId || !remoteId) return false;
+
+  const existing = findLocalByRemoteOrLocalId(db, "farmers", farmer);
+
+  if (!shouldApplyRemote(existing, farmer)) return false;
+
+  const localBeans = Array.isArray(farmer.beans)
+    ? farmer.beans
+        .map((bean) => {
+          if (typeof bean === "string") return bean;
+          return bean.localId || bean._id || null;
+        })
+        .filter(Boolean)
+    : [];
+
+  db.run(
+    `
+    INSERT INTO farmers (
+      id, remoteId, farmerID, name, sex, age,
+      residentialAddress, farmAddress,
+      contactNumber, emailAddress, beans,
+      createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(id) DO UPDATE SET
+      remoteId = excluded.remoteId,
+      farmerID = excluded.farmerID,
+      name = excluded.name,
+      sex = excluded.sex,
+      age = excluded.age,
+      residentialAddress = excluded.residentialAddress,
+      farmAddress = excluded.farmAddress,
+      contactNumber = excluded.contactNumber,
+      emailAddress = excluded.emailAddress,
+      beans = excluded.beans,
+      createdAt = excluded.createdAt,
+      updatedAt = excluded.updatedAt,
+      synced = 1
+    `,
+    [
+      localId,
+      remoteId,
+      farmer.farmerID || "",
+      farmer.name || "",
+      farmer.sex || "",
+      Number(farmer.age || 0),
+      farmer.residentialAddress || "",
+      farmer.farmAddress || "",
+      farmer.contactNumber || "",
+      farmer.emailAddress || "",
+      JSON.stringify(localBeans),
+      toIso(farmer.createdAt),
+      toIso(farmer.updatedAt),
+    ]
+  );
+
+  return true;
+}
+
+function upsertRemoteDelivery(db, delivery) {
+  const localId = String(delivery.localId || delivery._id || "").trim();
+  const remoteId = String(delivery._id || "").trim();
+
+  if (!localId || !remoteId) return false;
+
+  const existing = findLocalByRemoteOrLocalId(db, "deliveries", delivery);
+
+  if (!shouldApplyRemote(existing, delivery)) return false;
+
+  const volume = Number(delivery.volume || 0);
+  const pricePerUnit = Number(delivery.pricePerUnit || 0);
+  const totalAmount = Number(delivery.totalAmount || volume * pricePerUnit || 0);
+
+  db.run(
+    `
+    INSERT INTO deliveries (
+      id, remoteId, farmer, farmerContact, beanType, courier, date,
+      deliveryGuy, consignee, deliveryGuyContact, consigneeContact,
+      proofOfDelivery, recordedBy, volume, pricePerUnit,
+      totalAmount, createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(id) DO UPDATE SET
+      remoteId = excluded.remoteId,
+      farmer = excluded.farmer,
+      farmerContact = excluded.farmerContact,
+      beanType = excluded.beanType,
+      courier = excluded.courier,
+      date = excluded.date,
+      deliveryGuy = excluded.deliveryGuy,
+      consignee = excluded.consignee,
+      deliveryGuyContact = excluded.deliveryGuyContact,
+      consigneeContact = excluded.consigneeContact,
+      proofOfDelivery = excluded.proofOfDelivery,
+      recordedBy = excluded.recordedBy,
+      volume = excluded.volume,
+      pricePerUnit = excluded.pricePerUnit,
+      totalAmount = excluded.totalAmount,
+      createdAt = excluded.createdAt,
+      updatedAt = excluded.updatedAt,
+      synced = 1
+    `,
+    [
+      localId,
+      remoteId,
+      delivery.farmer || "",
+      delivery.farmerContact || "",
+      delivery.beanType || "",
+      delivery.courier || "",
+      toIso(delivery.date),
+      delivery.deliveryGuy || "",
+      delivery.consignee || "",
+      delivery.deliveryGuyContact || "",
+      delivery.consigneeContact || "",
+      delivery.proofOfDelivery || "",
+      delivery.recordedBy || "",
+      volume,
+      pricePerUnit,
+      totalAmount,
+      toIso(delivery.createdAt),
+      toIso(delivery.updatedAt),
+    ]
+  );
+
+  db.run(
+    `
+    INSERT INTO transactions (
+      id, farmerName, beanType, volume, amount,
+      date, remarks, createdBy, createdAt, updatedAt
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      farmerName = excluded.farmerName,
+      beanType = excluded.beanType,
+      volume = excluded.volume,
+      amount = excluded.amount,
+      date = excluded.date,
+      remarks = excluded.remarks,
+      createdBy = excluded.createdBy,
+      createdAt = excluded.createdAt,
+      updatedAt = excluded.updatedAt
+    `,
+    [
+      localId,
+      delivery.farmer || "",
+      delivery.beanType || "",
+      volume,
+      totalAmount,
+      toIso(delivery.date),
+      "Auto-generated from delivery",
+      delivery.recordedBy || "",
+      toIso(delivery.createdAt),
+      toIso(delivery.updatedAt),
+    ]
+  );
+
+  return true;
+}
+
+function upsertRemotePayment(db, payment, transactionRemoteToLocal = {}) {
+  const localId = String(payment.localId || payment._id || "").trim();
+  const remoteId = String(payment._id || "").trim();
+
+  if (!localId || !remoteId) return false;
+
+  const existing = findLocalByRemoteOrLocalId(db, "payments", payment);
+
+  if (!shouldApplyRemote(existing, payment)) return false;
+
+  const remoteDeliveryId =
+    typeof payment.deliveryId === "object"
+      ? String(payment.deliveryId?._id || "")
+      : String(payment.deliveryId || "");
+
+  const localDeliveryId =
+    transactionRemoteToLocal[remoteDeliveryId] || remoteDeliveryId;
+
+  db.run(
+    `
+    INSERT INTO payments (
+      id, remoteId, deliveryId, farmerName, amountPaid,
+      paymentMethod, notes, createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(id) DO UPDATE SET
+      remoteId = excluded.remoteId,
+      deliveryId = excluded.deliveryId,
+      farmerName = excluded.farmerName,
+      amountPaid = excluded.amountPaid,
+      paymentMethod = excluded.paymentMethod,
+      notes = excluded.notes,
+      createdAt = excluded.createdAt,
+      updatedAt = excluded.updatedAt,
+      synced = 1
+    `,
+    [
+      localId,
+      remoteId,
+      localDeliveryId,
+      payment.farmerName || "",
+      Number(payment.amountPaid || 0),
+      payment.paymentMethod || "Cash",
+      payment.notes || "",
+      toIso(payment.createdAt),
+      toIso(payment.updatedAt),
+    ]
+  );
+
+  return true;
+}
+
+/* =========================
+   PULL FROM REMOTE
+========================= */
+async function pullFromRemote(db, onProgress = null) {
+  const result = {
+    pulled: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  const notify = (msg) => {
+    console.log(`[SYNC] ${msg}`);
+    if (onProgress) onProgress(msg);
+  };
+
+  notify("Pulling remote changes...");
+
+  const txMaps = await fetchRemoteTransactionMaps();
+
+  const targets = [
+    {
+      label: "beans",
+      remotePath: "/api/beans",
+      upsert: (item) => upsertRemoteBean(db, item),
+    },
+    {
+      label: "farmers",
+      remotePath: "/api/farmers",
+      upsert: (item) => upsertRemoteFarmer(db, item),
+    },
+    {
+      label: "deliveries",
+      remotePath: "/api/deliveries",
+      upsert: (item) => upsertRemoteDelivery(db, item),
+    },
+    {
+      label: "payments",
+      remotePath: "/api/payments",
+      upsert: (item) => upsertRemotePayment(db, item, txMaps.remoteToLocal),
+    },
+  ];
+
+  for (const target of targets) {
+    try {
+      const res = await remoteRequest("GET", target.remotePath);
+
+      if (res.status !== 200) {
+        const errMsg = `${target.label}: pull failed with status ${res.status}: ${JSON.stringify(res.body)}`;
+        result.failed++;
+        result.errors.push(errMsg);
+        notify(`⚠ ${errMsg}`);
+        continue;
+      }
+
+      const list = firstArray(res.body);
+
+      if (!Array.isArray(list) || list.length === 0) {
+        notify(`${target.label}: nothing to pull`);
+        continue;
+      }
+
+      let applied = 0;
+
+      for (const item of list) {
+        try {
+          const changed = target.upsert(item);
+          if (changed) {
+            applied++;
+            result.pulled++;
+          }
+        } catch (err) {
+          const errMsg = `${target.label}: failed to apply remote record ${item?._id || item?.localId || ""}: ${err.message}`;
+          result.failed++;
+          result.errors.push(errMsg);
+          notify(`✗ ${errMsg}`);
+        }
+      }
+
+      notify(`${target.label}: pulled/applied ${applied} record(s)`);
+    } catch (err) {
+      const errMsg = `${target.label}: pull error: ${err.message}`;
+      result.failed++;
+      result.errors.push(errMsg);
+      notify(`✗ ${errMsg}`);
+    }
+  }
+
+  return result;
+}
+
+/* =========================
+   MAIN SYNC
+========================= */
+async function syncToRemote(db, onProgress = null) {
+  const result = {
+    success: true,
+    pushed: 0,
+    pulled: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  const notify = (msg) => {
+    console.log(`[SYNC] ${msg}`);
+    if (onProgress) onProgress(msg);
+  };
+
+  notify("Starting sync...");
+  notify(`Remote: ${REMOTE_BASE_URL}`);
+
+  const online = await checkOnline();
+
+  if (!online) {
+    notify("Offline — sync skipped");
+    return {
+      ...result,
+      success: false,
+      errors: ["Device is offline"],
+    };
+  }
+
+  notify("Online — authenticating...");
+
+  const loggedIn = await loginToRemote();
+
+  if (!loggedIn) {
+    notify("Auth failed — sync aborted");
+    return {
+      ...result,
+      success: false,
+      errors: ["Could not authenticate with remote server"],
+    };
+  }
+
+  notify("Push phase starting...");
+  const pushResult = await pushToRemote(db, onProgress);
+
+  result.pushed += pushResult.pushed;
+  result.failed += pushResult.failed;
+  result.errors.push(...pushResult.errors);
+
+  notify("Pull phase starting...");
+  const pullResult = await pullFromRemote(db, onProgress);
+
+  result.pulled += pullResult.pulled;
+  result.failed += pullResult.failed;
+  result.errors.push(...pullResult.errors);
+
   result.success = result.failed === 0;
 
-  notify(`Sync complete — pushed: ${result.pushed}, failed: ${result.failed}`);
+  notify(
+    `Sync complete — pushed: ${result.pushed}, pulled: ${result.pulled}, failed: ${result.failed}`
+  );
 
   return result;
 }
@@ -518,6 +1049,7 @@ function getPendingCount(db) {
 
 module.exports = {
   syncToRemote,
+  pullFromRemote,
   checkOnline,
   getPendingCount,
 };

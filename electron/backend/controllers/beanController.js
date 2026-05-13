@@ -1,29 +1,46 @@
 import Bean from "../models/bean.js";
 import Farmer from "../models/farmer.js";
 
-// 📌 CREATE Bean
 export const createBean = async (req, res) => {
   try {
-    const { beanName, pricePerUnit, unit } = req.body;
+    const { localId, beanName, pricePerUnit, unit } = req.body;
 
-    if (!beanName || !pricePerUnit || !unit) {
+    if (!beanName || pricePerUnit === undefined || !unit) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const newBean = new Bean({
-      beanName,
-      pricePerUnit,
-      unit,
-    });
+    let savedBean;
 
-    const savedBean = await newBean.save();
+    if (localId) {
+      savedBean = await Bean.findOneAndUpdate(
+        { localId },
+        {
+          localId,
+          beanName,
+          pricePerUnit,
+          unit,
+        },
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        }
+      );
+    } else {
+      savedBean = await Bean.create({
+        beanName,
+        pricePerUnit,
+        unit,
+      });
+    }
+
     res.status(201).json(savedBean);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// 📌 GET all Beans (WITH REVERSE QUERY → FARMERS)
 export const getBeans = async (req, res) => {
   try {
     const beans = await Bean.find().sort({ createdAt: -1 });
@@ -36,10 +53,13 @@ export const getBeans = async (req, res) => {
 
         return {
           _id: bean._id,
+          localId: bean.localId,
           beanName: bean.beanName,
           pricePerUnit: bean.pricePerUnit,
           unit: bean.unit,
-          farmers, // 🔥 computed dynamically
+          farmers,
+          createdAt: bean.createdAt,
+          updatedAt: bean.updatedAt,
         };
       })
     );
@@ -50,7 +70,6 @@ export const getBeans = async (req, res) => {
   }
 };
 
-// 📌 UPDATE Bean
 export const updateBean = async (req, res) => {
   try {
     const { id } = req.params;
@@ -75,7 +94,6 @@ export const updateBean = async (req, res) => {
   }
 };
 
-// 📌 DELETE Bean
 export const deleteBean = async (req, res) => {
   try {
     const { id } = req.params;

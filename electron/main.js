@@ -99,6 +99,14 @@ function emitUpdate(channel, payload) {
   }
 }
 
+function emitAllDataUpdated() {
+  emitUpdate("farmers:updated");
+  emitUpdate("deliveries:updated");
+  emitUpdate("payments:updated");
+  emitUpdate("beans:updated");
+  emitUpdate("transactions:updated");
+}
+
 /* =========================
    SYNC RUNNER
 ========================= */
@@ -109,6 +117,7 @@ async function runSync() {
     return {
       success: false,
       pushed: 0,
+      pulled: 0,
       failed: 0,
       errors: ["Database not ready"],
     };
@@ -131,14 +140,12 @@ async function runSync() {
     pending,
     lastSync: result.success ? new Date().toISOString() : null,
     errors: result.errors || [],
+    pushed: result.pushed || 0,
+    pulled: result.pulled || 0,
   });
 
-  if (result.pushed > 0) {
-    emitUpdate("farmers:updated");
-    emitUpdate("deliveries:updated");
-    emitUpdate("payments:updated");
-    emitUpdate("beans:updated");
-    emitUpdate("transactions:updated");
+  if ((result.pushed || 0) > 0 || (result.pulled || 0) > 0) {
+    emitAllDataUpdated();
   }
 
   return result;

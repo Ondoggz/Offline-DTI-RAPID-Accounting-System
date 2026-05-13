@@ -1,11 +1,10 @@
 import Delivery from "../models/delivery.js";
 import Transaction from "../models/transaction.js";
 
-// CREATE
+// CREATE / UPSERT
 export const createDelivery = async (req, res) => {
   try {
-    console.log("CREATE DELIVERY BODY:", req.body);
-    console.log("CREATE DELIVERY FILE:", req.file);
+    const localId = req.body.localId || null;
 
     const volume = Number(req.body.volume);
     const pricePerUnit = Number(req.body.pricePerUnit);
@@ -38,7 +37,8 @@ export const createDelivery = async (req, res) => {
       });
     }
 
-    const newDelivery = await Delivery.create({
+    const deliveryData = {
+      localId,
       farmer: req.body.farmer,
       farmerContact: req.body.farmerContact || "",
       beanType: req.body.beanType,
@@ -49,28 +49,58 @@ export const createDelivery = async (req, res) => {
       deliveryGuyContact: req.body.deliveryGuyContact,
       consigneeContact: req.body.consigneeContact,
       recordedBy: req.body.recordedBy || "Unknown User",
-      // proofOfDelivery can be a file upload (web) or a plain string (Electron sync)
-      proofOfDelivery: req.file ? req.file.filename : (req.body.proofOfDelivery || ""),
+      proofOfDelivery: req.file
+        ? req.file.filename
+        : req.body.proofOfDelivery || "",
       volume,
       pricePerUnit,
       totalAmount,
-    });
+    };
 
-    await Transaction.create({
-      // ✅ Save localId from Electron so sync.js can look up this transaction later
-      // When created from the web app, localId will be undefined → saved as null (safe)
-      localId: req.body.localId || null,
-      type: "DELIVERY",
-      farmerName: newDelivery.farmer,
-      beanType: newDelivery.beanType,
+    let delivery;
+
+    if (localId) {
+      delivery = await Delivery.findOneAndUpdate(
+        { localId },
+        deliveryData,
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        }
+      );
+    } else {
+      delivery = await Delivery.create(deliveryData);
+    }
+
+    const transactionData = {
+      localId,
+      farmerName: delivery.farmer,
+      beanType: delivery.beanType,
       amount: totalAmount,
       volume,
-      date: newDelivery.date,
+      date: delivery.date,
       remarks: "Delivery recorded",
-      createdBy: req.user?._id || req.user?.id,
-    });
+      createdBy: req.user?._id || req.user?.id || null,
+    };
 
-    res.status(201).json(newDelivery);
+    if (localId) {
+      await Transaction.findOneAndUpdate(
+        { localId },
+        transactionData,
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+          setDefaultsOnInsert: true,
+        }
+      );
+    } else {
+      await Transaction.create(transactionData);
+    }
+
+    res.status(201).json(delivery);
   } catch (err) {
     console.error("CREATE DELIVERY ERROR:", err);
 
@@ -107,6 +137,10 @@ export const deleteDelivery = async (req, res) => {
 
     if (!deletedDelivery) {
       return res.status(404).json({ message: "Delivery not found" });
+    }
+
+    if (deletedDelivery.localId) {
+      await Transaction.findOneAndDelete({ localId: deletedDelivery.localId });
     }
 
     res.json({ message: "Delivery deleted successfully" });

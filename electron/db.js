@@ -45,15 +45,12 @@ async function initDB() {
     saveDB();
   }
 
-  // Always run migrations — safe to call on existing DBs
   runMigrations();
   seedAdminUser();
 }
 
 /* =========================
    MIGRATIONS
-   Adds `synced` column to existing tables without breaking anything.
-   ALTER TABLE in SQLite ignores errors if column already exists via try/catch.
 ========================= */
 function runMigrations() {
   const migrations = [
@@ -61,6 +58,11 @@ function runMigrations() {
     `ALTER TABLE farmers ADD COLUMN synced INTEGER DEFAULT 0`,
     `ALTER TABLE deliveries ADD COLUMN synced INTEGER DEFAULT 0`,
     `ALTER TABLE payments ADD COLUMN synced INTEGER DEFAULT 0`,
+
+    `ALTER TABLE beans ADD COLUMN remoteId TEXT`,
+    `ALTER TABLE farmers ADD COLUMN remoteId TEXT`,
+    `ALTER TABLE deliveries ADD COLUMN remoteId TEXT`,
+    `ALTER TABLE payments ADD COLUMN remoteId TEXT`,
   ];
 
   for (const sql of migrations) {
@@ -102,6 +104,19 @@ function all(query, params = []) {
   return rows;
 }
 
+function markRemoteSynced(table, localId, remoteId) {
+  run(
+    `
+    UPDATE ${table}
+    SET
+      remoteId = ?,
+      synced = 1
+    WHERE id = ?
+    `,
+    [remoteId, localId]
+  );
+}
+
 /* =========================
    TABLES
 ========================= */
@@ -109,6 +124,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS beans (
       id TEXT PRIMARY KEY,
+      remoteId TEXT,
       beanName TEXT,
       pricePerUnit REAL,
       unit TEXT,
@@ -121,6 +137,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS deliveries (
       id TEXT PRIMARY KEY,
+      remoteId TEXT,
       farmer TEXT,
       farmerContact TEXT,
       beanType TEXT,
@@ -144,6 +161,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS farmers (
       id TEXT PRIMARY KEY,
+      remoteId TEXT,
       farmerID TEXT,
       name TEXT,
       sex TEXT,
@@ -162,6 +180,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS payments (
       id TEXT PRIMARY KEY,
+      remoteId TEXT,
       deliveryId TEXT,
       farmerName TEXT,
       amountPaid REAL,
@@ -212,8 +231,11 @@ function addBean(bean) {
 
   run(
     `
-    INSERT INTO beans (id, beanName, pricePerUnit, unit, createdAt, updatedAt, synced)
-    VALUES (?, ?, ?, ?, ?, ?, 0)
+    INSERT INTO beans (
+      id, remoteId, beanName, pricePerUnit, unit,
+      createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(id) DO UPDATE SET
       beanName = excluded.beanName,
       pricePerUnit = excluded.pricePerUnit,
@@ -221,7 +243,15 @@ function addBean(bean) {
       updatedAt = excluded.updatedAt,
       synced = 0
     `,
-    [bean.id, bean.beanName, bean.pricePerUnit, bean.unit || "kg", now, now]
+    [
+      bean.id,
+      bean.remoteId || null,
+      bean.beanName,
+      bean.pricePerUnit,
+      bean.unit || "kg",
+      now,
+      now,
+    ]
   );
 }
 
@@ -242,12 +272,12 @@ function addFarmer(f) {
   run(
     `
     INSERT INTO farmers (
-      id, farmerID, name, sex, age,
+      id, remoteId, farmerID, name, sex, age,
       residentialAddress, farmAddress,
       contactNumber, emailAddress, beans,
       createdAt, updatedAt, synced
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(id) DO UPDATE SET
       farmerID = excluded.farmerID,
       name = excluded.name,
@@ -263,6 +293,7 @@ function addFarmer(f) {
     `,
     [
       f.id,
+      f.remoteId || null,
       f.farmerID,
       f.name,
       f.sex,
@@ -326,14 +357,15 @@ function addDelivery(d) {
   const now = new Date().toISOString();
   const total = (d.volume || 0) * (d.pricePerUnit || 0);
 
-    run(
-    `INSERT INTO deliveries (
-      id, farmer, farmerContact, beanType, courier, date,
+  run(
+    `
+    INSERT INTO deliveries (
+      id, remoteId, farmer, farmerContact, beanType, courier, date,
       deliveryGuy, consignee, deliveryGuyContact, consigneeContact,
       proofOfDelivery, recordedBy, volume, pricePerUnit,
       totalAmount, createdAt, updatedAt, synced
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(id) DO UPDATE SET
       farmer = excluded.farmer,
       farmerContact = excluded.farmerContact,
@@ -354,6 +386,7 @@ function addDelivery(d) {
     `,
     [
       d.id,
+      d.remoteId || null,
       d.farmer,
       d.farmerContact,
       d.beanType,
@@ -420,6 +453,7 @@ function addPayment(p) {
 
   const payment = {
     id: p.id || String(Date.now()),
+    remoteId: p.remoteId || null,
     deliveryId: p.deliveryId || "",
     farmerName: p.farmerName || "",
     amountPaid: Number(p.amountPaid || 0),
@@ -430,9 +464,24 @@ function addPayment(p) {
   };
 
   run(
-    `INSERT INTO payments VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    `
+    INSERT INTO payments (
+      id, remoteId, deliveryId, farmerName, amountPaid,
+      paymentMethod, notes, createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    ON CONFLICT(id) DO UPDATE SET
+      deliveryId = excluded.deliveryId,
+      farmerName = excluded.farmerName,
+      amountPaid = excluded.amountPaid,
+      paymentMethod = excluded.paymentMethod,
+      notes = excluded.notes,
+      updatedAt = excluded.updatedAt,
+      synced = 0
+    `,
     [
       payment.id,
+      payment.remoteId,
       payment.deliveryId,
       payment.farmerName,
       payment.amountPaid,
@@ -515,28 +564,36 @@ function deleteUser(id) {
 ========================= */
 module.exports = {
   initDB,
+
   // raw helpers exposed for sync.js
   all,
   run,
+  markRemoteSynced,
+
   // beans
   addBean,
   getBeans,
   deleteBean,
+
   // farmers
   addFarmer,
   getFarmers,
   updateFarmer,
   deleteFarmer,
+
   // deliveries
   addDelivery,
   getDeliveries,
   deleteDelivery,
+
   // payments
   addPayment,
   getPayments,
+
   // transactions
   addTransaction,
   getTransactions,
+
   // users
   addUser,
   getUsers,

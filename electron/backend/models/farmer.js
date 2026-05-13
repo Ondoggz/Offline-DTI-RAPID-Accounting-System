@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const farmerSchema = new mongoose.Schema(
   {
+    localId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+
     farmerID: {
       type: String,
       required: true,
@@ -51,7 +57,6 @@ const farmerSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    // 🔥 RELATION
     beans: [
       {
         type: mongoose.Schema.Types.ObjectId,
