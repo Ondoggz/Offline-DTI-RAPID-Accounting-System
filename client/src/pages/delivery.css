@@ -232,3 +232,19 @@
   justify-content: space-between;
   margin-top: 15px;
 }
+
+.error-bubble {
+  background: #fff4e5;
+  border: 1px solid #f5c26b;
+  color: #8a5700;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-top: 5px;
+  display: inline-block;
+}
+
+.input-error {
+  border: 1px solid #d00;
+  background: #fff5f5;
+}
