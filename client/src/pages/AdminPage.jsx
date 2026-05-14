@@ -7,7 +7,8 @@ function AdminPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
+  const [modal, setModal] = useState(null);
+  
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -38,62 +39,123 @@ function AdminPage() {
     fetchUsers();
   }, []);
 
-  const createUser = async () => {
-    try {
-      if (!form.name || !form.username || !form.password) {
-        alert("Full name, username, and password are required");
-        return;
-      }
+const createUser = async () => {
+  try {
+    if (!validateForm()) return;
 
-      if (form.password !== form.confirmPassword) {
-        alert("Passwords do not match");
-        return;
-      }
+    const res = await window.api.addUser({
+      id: Date.now().toString(),
+      name: form.name,
+      username: form.username,
+      password: form.password,
+      sex: form.sex,
+      age: Number(form.age),
+      position: form.position,
+      role: form.role,
+    });
 
-      await window.api.addUser({
-        id: Date.now().toString(),
-        name: form.name,
-        username: form.username,
-        password: form.password,
-        sex: form.sex,
-        age: form.age ? Number(form.age) : null,
-        position: form.position,
-        role: form.role,
+    // ❗ CHECK RESPONSE
+    if (!res?.success) {
+      setModal({
+        type: "alert",
+        message: res?.message || "Failed to create user",
       });
-
-      setForm({
-        name: "",
-        username: "",
-        password: "",
-        confirmPassword: "",
-        sex: "",
-        age: "",
-        position: "",
-        role: "user",
-      });
-
-      setShowPassword(false);
-      setShowConfirmPassword(false);
-
-      fetchUsers();
-    } catch (err) {
-      console.error("CREATE USER ERROR:", err);
-      alert("Failed to create user");
+      return;
     }
-  };
+
+    setForm({
+      name: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
+      sex: "",
+      age: "",
+      position: "",
+      role: "user",
+    });
+
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+
+    fetchUsers();
+
+  } catch (err) {
+    console.error("CREATE USER ERROR:", err);
+    setModal({
+      type: "alert",
+      message: "Unexpected error while creating user",
+    });
+  }
+};
 
   const deleteUser = async (id) => {
     try {
-      const confirmDelete = window.confirm("Delete this user?");
-      if (!confirmDelete) return;
-
-      await window.api.deleteUser(id);
-      fetchUsers();
+      setModal({
+        type: "confirm",
+        message: "Delete this user?",
+        onConfirm: async () => {
+          try {
+            await window.api.deleteUser(id);
+            fetchUsers();
+          } catch (err) {
+            console.error("DELETE USER ERROR:", err);
+            setModal({
+              type: "alert",
+              message: "Failed to delete user",
+            });
+          }
+        },
+      });
     } catch (err) {
       console.error("DELETE USER ERROR:", err);
-      alert("Failed to delete user");
+      setModal({
+        type: "alert",
+        message: "Failed to delete user",
+      });
     }
   };
+
+  const validateForm = () => {
+  if (!form.name.trim()) {
+    setModal({ type: "alert", message: "Full name is required" });
+    return false;
+  }
+
+  if (!form.username.trim()) {
+    setModal({ type: "alert", message: "Username is required" });
+    return false;
+  }
+
+  if (!form.password) {
+    setModal({ type: "alert", message: "Password is required" });
+    return false;
+  }
+
+  if (form.password !== form.confirmPassword) {
+    setModal({ type: "alert", message: "Passwords do not match" });
+    return false;
+  }
+
+  if (!form.sex) {
+    setModal({ type: "alert", message: "Please select sex" });
+    return false;
+  }
+
+  if (!form.age || Number(form.age) <= 0) {
+    setModal({ type: "alert", message: "Please enter valid age" });
+    return false;
+  }
+
+  if (!form.position.trim()) {
+    setModal({ type: "alert", message: "Position is required" });
+    return false;
+  }
+
+  return true;
+};
+
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+  const isPasswordValid = passwordRegex.test(form.password);
 
   return (
     <div className="admin-container">
@@ -127,6 +189,13 @@ function AdminPage() {
           <button onClick={() => setShowPassword(!showPassword)}>
             {showPassword ? "Hide" : "Show"}
           </button>
+                    {form.password.length > 0 && (
+          <small style={{ color: isPasswordValid ? "green" : "red" }}>
+            {isPasswordValid
+              ? "Strong password"
+              : "Must be 8+ chars, include letters and numbers"}
+          </small>
+        )}
         </div>
 
         <div className="password-field">
@@ -138,6 +207,7 @@ function AdminPage() {
               setForm({ ...form, confirmPassword: e.target.value })
             }
           />
+          
           <button
             onClick={() =>
               setShowConfirmPassword(!showConfirmPassword)
@@ -146,7 +216,7 @@ function AdminPage() {
             {showConfirmPassword ? "Hide" : "Show"}
           </button>
         </div>
-
+            
         <select
           value={form.sex}
           onChange={(e) => setForm({ ...form, sex: e.target.value })}
@@ -177,7 +247,9 @@ function AdminPage() {
           <option value="admin">Admin</option>
         </select>
 
-        <button onClick={createUser}>Create User</button>
+        <button onClick={createUser} disabled={!isPasswordValid}>
+          Create User
+        </button>
       </div>
 
       {/* USER LIST */}
@@ -215,8 +287,35 @@ function AdminPage() {
           ))}
         </div>
       </div>
+                {modal && (
+    <div className="modal-overlay">
+      <div className="modal-box">
+      <p>{modal.message}</p>
+
+      {modal.type === "alert" && (
+        <button onClick={() => setModal(null)} autoFocus>
+          OK
+        </button>
+      )}
+
+      {modal.type === "confirm" && (
+        <div className="modal-actions">
+          <button
+            onClick={() => {
+              modal.onConfirm?.();
+              setModal(null);
+            }}
+            autoFocus
+          >
+            Yes
+          </button>
+          <button onClick={() => setModal(null)}>Cancel</button>
+        </div>
+      )}
+    </div>
+  </div>
+)}
     </div>
   );
-}
-
+};
 export default AdminPage;
