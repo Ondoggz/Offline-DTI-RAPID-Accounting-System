@@ -13,6 +13,7 @@
   "build": {
     "appId": "com.offline.dti",
     "productName": "Offline DTI Accounting System",
+    "icon": "assets/palambon-logo.ico",
     "directories": {
       "output": "dist_electron"
     },
@@ -37,6 +38,7 @@
       }
     ],
     "win": {
+      "icon": "electron/assets/palamboon-logo.ico",
       "target": [
         {
           "target": "nsis",
