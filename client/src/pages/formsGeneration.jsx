@@ -6,6 +6,7 @@ import { saveAs } from "file-saver";
 function FormsGeneration() {
   const [farmers, setFarmers] = useState([]);
   const [beans, setBeans] = useState([]);
+  const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
     farmerId: "",
@@ -113,17 +114,28 @@ function FormsGeneration() {
   };
 
   const validateForm = () => {
+    const newErrors = {};
+
     if (!selectedFarmer) {
-      alert("Please select a farmer.");
-      return false;
+      newErrors.farmerId = "Please select a farmer";
     }
+
+    if (!form.deliveryDT) {
+      newErrors.deliveryDT = "Delivery date required";
+    }
+
+    if (!form.beanOrigin) newErrors.beanOrigin = "Required";
+    if (!form.beanAltitude) newErrors.beanAltitude = "Required";
+    if (!form.receiverName) newErrors.receiverName = "Required";
+    if (!form.payorName) newErrors.payorName = "Required";
 
     if (computedRows.some((r) => !r.beanId || !r.volume)) {
-      alert("Please complete all rows.");
-      return false;
+      newErrors.rows = "Complete all row fields";
     }
 
-    return true;
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
   };
 
   const buildDocData = () => ({
@@ -148,126 +160,252 @@ function FormsGeneration() {
   /* =========================
      EXPORT DOCX
   ========================= */
-const exportDocx = async () => {
-  if (!validateForm()) return;
+  const exportDocx = async () => {
+    if (!validateForm()) return;
 
-  try {
-    const content = await window.api.getTemplate(); // 👈 NO FETCH
+    try {
+      const content = await window.api.getTemplate();
 
-    const zip = new PizZip(content);
+      const zip = new PizZip(content);
 
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+      });
 
-    doc.render(buildDocData());
+      doc.render(buildDocData());
 
-    const blob = doc.getZip().generate({
-      type: "blob",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
+      const blob = doc.getZip().generate({
+        type: "blob",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
 
-    saveAs(blob, `Form-${selectedFarmer?.name || "output"}.docx`);
-  } catch (err) {
-    console.error(err);
-    alert("DOCX generation failed.");
-  }
-};
+      saveAs(blob, `Form-${selectedFarmer?.name || "output"}.docx`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Forms Generation</h2>
+ <div style={{ padding: "20px" }}>
+  <h2>Forms Generation</h2>
 
-      <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
-        <select name="farmerId" value={form.farmerId} onChange={handleFormChange}>
-          <option value="">Select Farmer</option>
-          {farmers.map((f) => (
-            <option key={f.id} value={f.id}>{f.name}</option>
+  {/* =========================
+      TOP FORM
+  ========================= */}
+  <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
+    
+    {/* Farmer */}
+    <div>
+      <select
+        name="farmerId"
+        value={form.farmerId}
+        onChange={handleFormChange}
+        className={errors.farmerId ? "input-error" : ""}
+      >
+        <option value="">Select Farmer</option>
+        {farmers.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.name}
+          </option>
+        ))}
+      </select>
+
+      {errors.farmerId && (
+        <small className="error-bubble">{errors.farmerId}</small>
+      )}
+    </div>
+
+    {/* Delivery Date */}
+    <div>
+      <input
+        type="datetime-local"
+        name="deliveryDT"
+        value={form.deliveryDT}
+        onChange={handleFormChange}
+        onInput={(e) => e.target.blur()}
+        className={errors.deliveryDT ? "input-error" : ""}
+      />
+
+      {errors.deliveryDT && (
+        <small className="error-bubble">{errors.deliveryDT}</small>
+      )}
+    </div>
+
+    {/* Bean Origin */}
+    <div>
+      <input
+        name="beanOrigin"
+        placeholder="Bean Origin"
+        value={form.beanOrigin}
+        onChange={handleFormChange}
+        className={errors.beanOrigin ? "input-error" : ""}
+      />
+      {errors.beanOrigin && (
+        <small className="error-bubble">{errors.beanOrigin}</small>
+      )}
+    </div>
+
+    {/* Bean Altitude */}
+    <div>
+      <input
+        name="beanAltitude"
+        placeholder="Bean Altitude"
+        value={form.beanAltitude}
+        onChange={handleFormChange}
+        className={errors.beanAltitude ? "input-error" : ""}
+      />
+      {errors.beanAltitude && (
+        <small className="error-bubble">{errors.beanAltitude}</small>
+      )}
+    </div>
+
+    {/* Remarks */}
+    <div>
+      <input
+        name="remarks"
+        placeholder="Remarks"
+        value={form.remarks}
+        onChange={handleFormChange}
+        className={errors.remarks ? "input-error" : ""}
+      />
+      {errors.remarks && (
+        <small className="error-bubble">{errors.remarks}</small>
+      )}
+    </div>
+
+    {/* Receiver */}
+    <div>
+      <input
+        name="receiverName"
+        placeholder="Receiver Name"
+        value={form.receiverName}
+        onChange={handleFormChange}
+        className={errors.receiverName ? "input-error" : ""}
+      />
+      {errors.receiverName && (
+        <small className="error-bubble">{errors.receiverName}</small>
+      )}
+    </div>
+
+    {/* Payor */}
+    <div>
+      <input
+        name="payorName"
+        placeholder="Payor Name"
+        value={form.payorName}
+        onChange={handleFormChange}
+        className={errors.payorName ? "input-error" : ""}
+      />
+      {errors.payorName && (
+        <small className="error-bubble">{errors.payorName}</small>
+      )}
+    </div>
+  </div>
+
+  {/* =========================
+      ROWS SECTION
+  ========================= */}
+  <h3 style={{ marginTop: "20px" }}>Rows</h3>
+
+  {/* GLOBAL ROW ERROR */}
+  {errors.rows && (
+    <small className="error-bubble">{errors.rows}</small>
+  )}
+
+  {rows.map((row, i) => {
+    const bean = getBeanById(row.beanId);
+    const unitCost = bean?.pricePerUnit || 0;
+    const total = unitCost * (row.volume || 0);
+
+    return (
+      <div
+        key={i}
+        style={{
+          border: "1px solid #ccc",
+          padding: "10px",
+          marginBottom: "10px",
+        }}
+      >
+        <strong>Row {i + 1}</strong>
+
+        {/* AR No */}
+        <input
+          value={row.arNo}
+          placeholder="AR No"
+          onChange={(e) =>
+            handleRowChange(i, "arNo", e.target.value)
+          }
+        />
+
+        {/* Bean */}
+        <select
+          value={row.beanId}
+          onChange={(e) =>
+            handleRowChange(i, "beanId", e.target.value)
+          }
+        >
+          <option value="">Select Bean</option>
+          {beans.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
           ))}
         </select>
 
+        {/* Unit Cost */}
+        <input value={unitCost} readOnly />
+
+        {/* Volume */}
         <input
-          type="datetime-local"
-          name="deliveryDT"
-          value={form.deliveryDT}
-          onChange={handleFormChange}
-          onInput={(e) => e.target.blur()}
+          type="number"
+          placeholder="Volume"
+          value={row.volume}
+          onChange={(e) =>
+            handleRowChange(i, "volume", e.target.value)
+          }
         />
 
-        <input name="beanOrigin" placeholder="Bean Origin" value={form.beanOrigin} onChange={handleFormChange} />
-        <input name="beanAltitude" placeholder="Bean Altitude" value={form.beanAltitude} onChange={handleFormChange} />
-        <input name="remarks" placeholder="Remarks" value={form.remarks} onChange={handleFormChange} />
-        <input name="receiverName" placeholder="Receiver Name" value={form.receiverName} onChange={handleFormChange} />
-        <input name="payorName" placeholder="Payor Name" value={form.payorName} onChange={handleFormChange} />
+        {/* Total */}
+        <input value={total} readOnly />
+
+        {/* Payment Date */}
+        <input
+          type="datetime-local"
+          value={row.paymentDT}
+          onChange={(e) => {
+            handleRowChange(i, "paymentDT", e.target.value);
+            e.target.blur();
+          }}
+        />
+
+        {/* Remarks */}
+        <input
+          placeholder="Remarks"
+          value={row.remarks2}
+          onChange={(e) =>
+            handleRowChange(i, "remarks2", e.target.value)
+          }
+        />
+
+        <button onClick={() => removeRow(i)}>Remove</button>
       </div>
+    );
+  })}
 
-      <h3 style={{ marginTop: "20px" }}>Rows</h3>
+  {/* ADD ROW */}
+  <button onClick={addRow}>+ Add Row</button>
 
-      {rows.map((row, i) => {
-        const bean = getBeanById(row.beanId);
-        const unitCost = bean?.pricePerUnit || 0;
-        const total = unitCost * (row.volume || 0);
+  {/* TOTAL */}
+  <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
 
-        return (
-          <div key={i} style={{ border: "1px solid #ccc", padding: "10px", marginBottom: "10px" }}>
-            <strong>Row {i + 1}</strong>
-
-            <input
-              value={row.arNo}
-              placeholder="AR No"
-              onChange={(e) => handleRowChange(i, "arNo", e.target.value)}
-            />
-
-            <select
-              value={row.beanId}
-              onChange={(e) => handleRowChange(i, "beanId", e.target.value)}
-            >
-              <option value="">Select Bean</option>
-              {beans.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-
-            <input value={unitCost} readOnly />
-            <input
-              type="number"
-              placeholder="Volume"
-              value={row.volume}
-              onChange={(e) => handleRowChange(i, "volume", e.target.value)}
-            />
-            <input value={total} readOnly />
-
-            <input
-              type="datetime-local"
-              value={row.paymentDT}
-              onChange={(e) => {
-                handleRowChange(i, "paymentDT", e.target.value);
-                e.target.blur();
-              }}
-            />
-
-            <input
-              placeholder="Remarks"
-              value={row.remarks2}
-              onChange={(e) => handleRowChange(i, "remarks2", e.target.value)}
-            />
-
-            <button onClick={() => removeRow(i)}>Remove</button>
-          </div>
-        );
-      })}
-
-      <button onClick={addRow}>+ Add Row</button>
-
-      <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
-
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button onClick={exportDocx}>Export DOCX</button>
-      </div>
-    </div>
+  {/* EXPORT */}
+  <div style={{ display: "flex", gap: "10px" }}>
+    <button onClick={exportDocx}>Export DOCX</button>
+  </div>
+</div>
   );
-}
+};
 
 export default FormsGeneration;
