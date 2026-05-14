@@ -6,6 +6,8 @@ export default function Login({ onLoginSuccess }) {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
 
+  const [modal, setModal] = useState(null);
+
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -14,18 +16,26 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const data = await window.api.login(form.username, form.password);
+      const data = await window.api.login(
+        form.username,
+        form.password
+      );
 
       if (!data?.success) {
-        alert(data?.message || "Login failed");
+        setModal({
+          type: "alert",
+          message: data?.message || "Login failed",
+        });
         return;
       }
 
-      // Electron offline login does not need a frontend token.
       onLoginSuccess(data.user);
     } catch (error) {
       console.error("LOGIN ERROR:", error);
-      alert("Login error");
+      setModal({
+        type: "alert",
+        message: "Login error",
+      });
     } finally {
       setLoading(false);
     }
@@ -64,6 +74,21 @@ export default function Login({ onLoginSuccess }) {
           </button>
         </form>
       </div>
+
+      {/* MODAL */}
+      {modal && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <p>{modal.message}</p>
+
+            {modal.type === "alert" && (
+              <button onClick={() => setModal(null)}>
+                OK
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
