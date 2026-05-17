@@ -46,6 +46,7 @@ async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: path.join(__dirname, "assets/palambon-logo.ico"),
     show: false,
     webPreferences: {
       contextIsolation: true,
@@ -249,9 +250,42 @@ ipcMain.handle("user:logout", () => {
 ========================= */
 ipcMain.handle("user:add", (_, data) => {
   ensureDB();
+
+if (!data.name?.trim() || !data.username?.trim()) {
+  return { success: false, message: "Missing required fields" };
+}
+
+  if (!data.sex) {
+    return { success: false, message: "Sex is required" };
+  }
+
+  if (!data.position) {
+    return { success: false, message: "Position is required" };
+  }
+
+  if (data.password.length < 8) {
+    return { success: false, message: "Password too short" };
+  }
+
+  const hasLetter = /[A-Za-z]/.test(data.password);
+  const hasNumber = /\d/.test(data.password);
+
+  if (!hasLetter || !hasNumber) {
+    return { success: false, message: "Password must include letters and numbers" };
+  }
+
+  if (!data.age || Number(data.age) <= 0) {
+  return { success: false, message: "Invalid age" };
+}
+
+  if (!data.role) {
+    return { success: false, message: "Role is required" };
+  }
+
   const res = db.addUser(data);
   emitUpdate("users:updated");
-  return res;
+
+  return { success: true, result: res };
 });
 
 ipcMain.handle("user:get", () => {
@@ -414,65 +448,6 @@ ipcMain.handle("transaction:add", (_, data) => {
 ipcMain.handle("transaction:get", () => {
   ensureDB();
   return db.getTransactions();
-});
-
-/* =========================
-   IPC — PRINT
-========================= */
-ipcMain.handle("form:print", async (_, data) => {
-  try {
-    const printWindow = new BrowserWindow({ show: false });
-
-    const html = `
-      <html>
-        <body style="font-family: Arial; padding: 20px;">
-          <h2>Form Preview</h2>
-          <p><strong>Name:</strong> ${data.name}</p>
-          <p><strong>ID:</strong> ${data.idNumber}</p>
-          <p><strong>Total:</strong> ₱${data.amountInFigures}</p>
-          <hr />
-          <table border="1" cellpadding="5" cellspacing="0" width="100%">
-            <thead>
-              <tr>
-                <th>Particulars</th>
-                <th>Volume</th>
-                <th>Unit Cost</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(data.rows || [])
-                .map(
-                  (r) => `
-                    <tr>
-                      <td>${r.particulars}</td>
-                      <td>${r.volume}</td>
-                      <td>${r.unitCost}</td>
-                      <td>${r.totalAmount}</td>
-                    </tr>
-                  `
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    await printWindow.loadURL(
-      "data:text/html;charset=utf-8," + encodeURIComponent(html)
-    );
-
-    const pdf = await printWindow.webContents.printToPDF({
-      printBackground: true,
-    });
-
-    printWindow.close();
-    return pdf;
-  } catch (err) {
-    console.error("PRINT ERROR:", err);
-    throw err;
-  }
 });
 
 ipcMain.handle("docx:getTemplate", () => {

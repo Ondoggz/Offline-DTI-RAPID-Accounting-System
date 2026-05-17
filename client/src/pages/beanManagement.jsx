@@ -8,9 +8,10 @@ function BeanManagement({ beans, setBeans }) {
     unit: "kg",
   });
 
+  const [errors, setErrors] = useState({});
   const [isEditing, setIsEditing] = useState(false);
+  const [modal, setModal] = useState(null);
 
-  // 🔄 LOAD FROM LOCAL SQLITE (IPC)
   useEffect(() => {
     const fetchBeans = async () => {
       try {
@@ -40,24 +41,42 @@ function BeanManagement({ beans, setBeans }) {
       pricePerUnit: "",
       unit: "kg",
     });
+    setErrors({});
     setIsEditing(false);
   };
 
   const handleChange = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  // 🔥 CREATE / UPDATE (LOCAL IPC)
+  // ✅ VALIDATION (INLINE ERROR STYLE)
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!form.name.trim()) {
+      newErrors.name = "Bean name is required";
+    }
+
+    if (!form.pricePerUnit || Number(form.pricePerUnit) <= 0) {
+      newErrors.pricePerUnit = "Enter a valid price";
+    }
+
+    if (!form.unit.trim()) {
+      newErrors.unit = "Unit is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 🔥 CREATE / UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.name.trim() || !form.pricePerUnit || !form.unit.trim()) {
-      alert("Please fill in bean name, price per unit, and unit.");
-      return;
-    }
+    if (!validateForm()) return;
 
     const beanData = {
       id: isEditing ? form.id : Date.now().toString(),
@@ -67,11 +86,7 @@ function BeanManagement({ beans, setBeans }) {
     };
 
     try {
-      if (isEditing) {
-        await window.api.addBean(beanData); // same function handles overwrite in your DB
-      } else {
-        await window.api.addBean(beanData);
-      }
+      await window.api.addBean(beanData);
 
       const data = await window.api.getBeans();
 
@@ -101,28 +116,42 @@ function BeanManagement({ beans, setBeans }) {
     setIsEditing(true);
   };
 
-  // 🔥 DELETE (LOCAL IPC - you will need db.deleteBean later)
-  const handleDelete = async (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete this bean?");
-    if (!confirmed) return;
+  // ❗ KEEP MODAL ONLY FOR DELETE (GOOD UX)
+  const handleDelete = (id) => {
+    setModal({
+      type: "confirm",
+      message: "Are you sure you want to delete this bean?",
+      onConfirm: async () => {
+        try {
+          await window.api.deleteBean(id);
 
-    try {
-      await window.api.deleteBean(id);
+          const updated = await window.api.getBeans();
 
-      const updated = await window.api.getBeans();
+          setBeans(
+            updated.map((bean) => ({
+              id: bean.id,
+              name: bean.beanName,
+              pricePerUnit: bean.pricePerUnit,
+              unit: bean.unit,
+              farmers: Array.isArray(bean.farmers) ? bean.farmers : [],
+            }))
+          );
+        } catch (err) {
+          console.error("Delete failed:", err);
+        }
+      },
+    });
+  };
 
-      setBeans(
-        updated.map((bean) => ({
-          id: bean.id,
-          name: bean.beanName,
-          pricePerUnit: bean.pricePerUnit,
-          unit: bean.unit,
-          farmers: Array.isArray(bean.farmers) ? bean.farmers : [],
-        }))
-      );
-    } catch (err) {
-      console.error("Delete failed:", err);
-    }
+  const errorStyle = {
+    background: "#fff4e5",
+    border: "1px solid #f5c26b",
+    color: "#8a5700",
+    padding: "6px 10px",
+    borderRadius: "10px",
+    fontSize: "12px",
+    marginTop: "5px",
+    display: "inline-block",
   };
 
   return (
@@ -139,29 +168,41 @@ function BeanManagement({ beans, setBeans }) {
           maxWidth: "700px",
         }}
       >
-        <input
-          type="text"
-          name="name"
-          placeholder="Bean name"
-          value={form.name}
-          onChange={handleChange}
-        />
+        {/* NAME */}
+        <div>
+          <input
+            name="name"
+            placeholder="Bean name"
+            value={form.name}
+            onChange={handleChange}
+          />
+          {errors.name && <div style={errorStyle}>{errors.name}</div>}
+        </div>
 
-        <input
-          type="number"
-          name="pricePerUnit"
-          placeholder="Price per unit"
-          value={form.pricePerUnit}
-          onChange={handleChange}
-        />
+        {/* PRICE */}
+        <div>
+          <input
+            type="number"
+            name="pricePerUnit"
+            placeholder="Price per unit"
+            value={form.pricePerUnit}
+            onChange={handleChange}
+          />
+          {errors.pricePerUnit && (
+            <div style={errorStyle}>{errors.pricePerUnit}</div>
+          )}
+        </div>
 
-        <input
-          type="text"
-          name="unit"
-          placeholder="Unit"
-          value={form.unit}
-          onChange={handleChange}
-        />
+        {/* UNIT */}
+        <div>
+          <input
+            name="unit"
+            placeholder="Unit"
+            value={form.unit}
+            onChange={handleChange}
+          />
+          {errors.unit && <div style={errorStyle}>{errors.unit}</div>}
+        </div>
 
         <div style={{ display: "flex", gap: "10px" }}>
           <button type="submit">
@@ -181,7 +222,7 @@ function BeanManagement({ beans, setBeans }) {
         <thead>
           <tr>
             <th>Bean Name</th>
-            <th>Price Per Unit</th>
+            <th>Price</th>
             <th>Unit</th>
             <th>Farmers</th>
             <th>Actions</th>
@@ -189,32 +230,48 @@ function BeanManagement({ beans, setBeans }) {
         </thead>
 
         <tbody>
-          {beans.length > 0 ? (
-            beans.map((bean) => (
-              <tr key={bean.id}>
-                <td>{bean.name}</td>
-                <td>{bean.pricePerUnit}</td>
-                <td>{bean.unit}</td>
-                <td>
-                  {Array.isArray(bean.farmers) && bean.farmers.length > 0
-                    ? bean.farmers.map((f) => f.name || f).join(", ")
-                    : "No farmers"}
-                </td>
-                <td>
-                  <button onClick={() => handleEdit(bean)}>Edit</button>{" "}
-                  <button onClick={() => handleDelete(bean.id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="5">No beans found.</td>
+          {beans.map((bean) => (
+            <tr key={bean.id}>
+              <td>{bean.name}</td>
+              <td>{bean.pricePerUnit}</td>
+              <td>{bean.unit}</td>
+              <td>
+                {Array.isArray(bean.farmers) && bean.farmers.length > 0
+                  ? bean.farmers.map((f) => f.name || f).join(", ")
+                  : "No farmers"}
+              </td>
+              <td>
+                <button onClick={() => handleEdit(bean)}>Edit</button>{" "}
+                <button onClick={() => handleDelete(bean.id)}>Delete</button>
+              </td>
             </tr>
-          )}
+          ))}
         </tbody>
       </table>
+
+      {/* DELETE MODAL (kept) */}
+      {modal && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <p>{modal.message}</p>
+
+            {modal.type === "confirm" && (
+              <div className="modal-actions">
+                <button
+                  onClick={() => {
+                    modal.onConfirm?.();
+                    setModal(null);
+                  }}
+                >
+                  Yes
+                </button>
+
+                <button onClick={() => setModal(null)}>Cancel</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
