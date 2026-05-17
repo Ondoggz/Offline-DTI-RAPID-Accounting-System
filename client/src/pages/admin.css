@@ -1,26 +1,23 @@
 .admin-container {
-  padding: 24px;
+  padding: 20px;
   font-family: Arial, sans-serif;
-  background: #f5f6fa;
+  background-color: #ECFDF5 !important;
   min-height: 100vh;
 }
 
-/* HEADER */
 .admin-container h1 {
   margin-bottom: 20px;
   color: #2f3640;
 }
 
-/* CARD SECTIONS */
 .admin-card {
-  background: white;
+  background-color: #ffffff;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 12px;
   margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-/* INPUTS */
 .admin-card input,
 .admin-card select {
   display: block;
@@ -30,6 +27,7 @@
   border: 1px solid #dcdde1;
   border-radius: 6px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .admin-card input:focus,
@@ -37,7 +35,6 @@
   border-color: #40739e;
 }
 
-/* BUTTON */
 .admin-btn {
   background: #273c75;
   color: white;
@@ -52,7 +49,6 @@
   background: #192a56;
 }
 
-/* USER LIST */
 .user-list {
   display: flex;
   flex-direction: column;
@@ -68,7 +64,26 @@
   border-radius: 6px;
 }
 
-/* DELETE BUTTON */
+.admin-actions,
+.user-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.edit-btn {
+  background: #40739e;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.edit-btn:hover {
+  background: #273c75;
+}
+
 .delete-btn {
   background: #e84118;
   color: white;
@@ -82,41 +97,30 @@
   background: #c23616;
 }
 
-/* Admin Page Specific Background */
-.admin-container {
-  background-color: #ECFDF5 !important;
-  min-height: 100vh;
-  padding: 20px;
+.cancel-btn {
+  background: #718093;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
-.admin-card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.cancel-btn:hover {
+  background: #57606f;
 }
 
 .password-field {
   position: relative;
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .password-field input {
   width: 100%;
-  padding-right: 70px; /* space for button */
-}
-
-.eye-btn {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  color: #555;
+  padding-right: 70px;
+  margin-bottom: 0;
+  box-sizing: border-box;
 }
 
 .eye-btn {
@@ -130,7 +134,32 @@
   font-size: 12px;
   font-weight: 600;
   color: #666;
+  padding: 0;
+  line-height: 1;
+}
 
-  line-height: 1;     
-  padding: 0;           
+.eye-btn:hover {
+  color: #000;
+}
+
+.warning-bubble {
+  margin-top: 6px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: #ffe5e5;
+  color: #b00020;
+  border: 1px solid #ffb3b3;
+  border-radius: 8px;
+  font-size: 14px;
+  position: relative;
+}
+
+.warning-bubble::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 18px;
+  border-width: 0 7px 7px 7px;
+  border-style: solid;
+  border-color: transparent transparent #ffe5e5 transparent;
 }

@@ -58,11 +58,13 @@ function runMigrations() {
     `ALTER TABLE farmers ADD COLUMN synced INTEGER DEFAULT 0`,
     `ALTER TABLE deliveries ADD COLUMN synced INTEGER DEFAULT 0`,
     `ALTER TABLE payments ADD COLUMN synced INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN synced INTEGER DEFAULT 0`,
 
     `ALTER TABLE beans ADD COLUMN remoteId TEXT`,
     `ALTER TABLE farmers ADD COLUMN remoteId TEXT`,
     `ALTER TABLE deliveries ADD COLUMN remoteId TEXT`,
     `ALTER TABLE payments ADD COLUMN remoteId TEXT`,
+    `ALTER TABLE users ADD COLUMN remoteId TEXT`,
   ];
 
   for (const sql of migrations) {
@@ -210,6 +212,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
+      remoteId TEXT,
       username TEXT UNIQUE,
       password TEXT,
       role TEXT DEFAULT 'user',
@@ -218,7 +221,8 @@ function createTables() {
       age INTEGER,
       position TEXT,
       createdAt TEXT,
-      updatedAt TEXT
+      updatedAt TEXT,
+      synced INTEGER DEFAULT 0
     )
   `);
 }
@@ -531,9 +535,28 @@ function addUser(u) {
   const now = new Date().toISOString();
 
   run(
-    `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `
+    INSERT INTO users (
+      id, remoteId, username, password, role,
+      name, sex, age, position,
+      createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    ON CONFLICT(id) DO UPDATE SET
+      remoteId = excluded.remoteId,
+      username = excluded.username,
+      password = excluded.password,
+      role = excluded.role,
+      name = excluded.name,
+      sex = excluded.sex,
+      age = excluded.age,
+      position = excluded.position,
+      updatedAt = excluded.updatedAt,
+      synced = 0
+    `,
     [
       u.id,
+      u.remoteId || null,
       u.username,
       u.password,
       u.role || "user",
@@ -543,6 +566,37 @@ function addUser(u) {
       u.position || "",
       now,
       now,
+    ]
+  );
+}
+
+function updateUser(id, u) {
+  const now = new Date().toISOString();
+
+  run(
+    `
+    UPDATE users SET
+      username = ?,
+      password = ?,
+      role = ?,
+      name = ?,
+      sex = ?,
+      age = ?,
+      position = ?,
+      updatedAt = ?,
+      synced = 0
+    WHERE id = ?
+    `,
+    [
+      u.username,
+      u.password,
+      u.role || "user",
+      u.name || "",
+      u.sex || "",
+      u.age || null,
+      u.position || "",
+      now,
+      id,
     ]
   );
 }
@@ -598,5 +652,6 @@ module.exports = {
   addUser,
   getUsers,
   getUserByUsername,
+  updateUser,
   deleteUser,
 };

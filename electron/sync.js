@@ -4,7 +4,7 @@
  * Pushes locally-created records (synced = 0) to the remote web app.
  * Pulls remote records back into local SQLite.
  *
- * Tables synced: beans, farmers, deliveries, payments.
+ * Tables synced: users, beans, farmers, deliveries, payments.
  */
 
 const https = require("https");
@@ -179,6 +179,7 @@ function normalizeKey(value) {
 function firstArray(value) {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.users)) return value.users;
   if (Array.isArray(value?.beans)) return value.beans;
   if (Array.isArray(value?.farmers)) return value.farmers;
   if (Array.isArray(value?.deliveries)) return value.deliveries;
@@ -205,6 +206,7 @@ function getRemoteIdFromResponse(body) {
     body?.id ||
     body?.data?._id ||
     body?.data?.id ||
+    body?.user?._id ||
     body?.bean?._id ||
     body?.farmer?._id ||
     body?.delivery?._id ||
@@ -260,7 +262,6 @@ function findLocalByRemoteOrLocalId(db, table, remote) {
 function shouldApplyRemote(localRow, remoteRow) {
   if (!localRow) return true;
 
-  // If local has unsynced changes and remote is not newer, do not overwrite local work.
   if (Number(localRow.synced) === 0) {
     return isRemoteNewer(remoteRow.updatedAt, localRow.updatedAt);
   }
@@ -383,6 +384,33 @@ async function fetchRemoteTransactionMaps() {
 ========================= */
 function getSyncTargets(db, beanMap = {}, deliveryMap = {}) {
   return [
+    {
+      label: "users",
+      table: "users",
+      remotePath: "/users",
+      getUnsynced: () => db.all(`SELECT * FROM users WHERE synced = 0`),
+      markSynced: (id, remoteId) => {
+        if (db.markRemoteSynced && remoteId) {
+          db.markRemoteSynced("users", id, remoteId);
+        } else {
+          db.run(`UPDATE users SET synced = 1 WHERE id = ?`, [id]);
+        }
+      },
+      toPayload: (row) =>
+        cleanPayload({
+          localId: row.id,
+          name: row.name,
+          username: row.username,
+          password: row.password,
+          sex: row.sex,
+          age: row.age ? Number(row.age) : null,
+          position: row.position,
+          role: row.role || "user",
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        }),
+    },
+
     {
       label: "beans",
       table: "beans",
@@ -616,6 +644,89 @@ async function pushToRemote(db, onProgress = null) {
 /* =========================
    PULL UPSERT HELPERS
 ========================= */
+function upsertRemoteUser(db, user) {
+  const localId = String(user.localId || user._id || "").trim();
+  const remoteId = String(user._id || "").trim();
+  const username = String(user.username || "").trim();
+
+  if (!localId || !remoteId || !username) return false;
+
+  let existing = findLocalByRemoteOrLocalId(db, "users", user);
+
+  if (!existing) {
+    const byUsername = db.all(`SELECT * FROM users WHERE username = ?`, [
+      username,
+    ]);
+
+    existing = byUsername[0] || null;
+  }
+
+  if (existing && !shouldApplyRemote(existing, user)) {
+    return false;
+  }
+
+  if (existing) {
+    db.run(
+      `
+      UPDATE users SET
+        remoteId = ?,
+        username = ?,
+        password = ?,
+        role = ?,
+        name = ?,
+        sex = ?,
+        age = ?,
+        position = ?,
+        createdAt = ?,
+        updatedAt = ?,
+        synced = 1
+      WHERE id = ?
+      `,
+      [
+        remoteId,
+        username,
+        user.password || existing.password || "",
+        user.role || "user",
+        user.name || "",
+        user.sex || "",
+        user.age ? Number(user.age) : null,
+        user.position || "",
+        toIso(user.createdAt),
+        toIso(user.updatedAt),
+        existing.id,
+      ]
+    );
+
+    return true;
+  }
+
+  db.run(
+    `
+    INSERT INTO users (
+      id, remoteId, name, username, password,
+      sex, age, position, role,
+      createdAt, updatedAt, synced
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `,
+    [
+      localId,
+      remoteId,
+      user.name || "",
+      username,
+      user.password || "",
+      user.sex || "",
+      user.age ? Number(user.age) : null,
+      user.position || "",
+      user.role || "user",
+      toIso(user.createdAt),
+      toIso(user.updatedAt),
+    ]
+  );
+
+  return true;
+}
+
 function upsertRemoteBean(db, bean) {
   const localId = String(bean.localId || bean._id || "").trim();
   const remoteId = String(bean._id || "").trim();
@@ -892,6 +1003,11 @@ async function pullFromRemote(db, onProgress = null) {
 
   const targets = [
     {
+      label: "users",
+      remotePath: "/users",
+      upsert: (item) => upsertRemoteUser(db, item),
+    },
+    {
       label: "beans",
       remotePath: "/api/beans",
       upsert: (item) => upsertRemoteBean(db, item),
@@ -1034,7 +1150,7 @@ async function syncToRemote(db, onProgress = null) {
 function getPendingCount(db) {
   let total = 0;
 
-  for (const table of ["beans", "farmers", "deliveries", "payments"]) {
+  for (const table of ["users", "beans", "farmers", "deliveries", "payments"]) {
     try {
       const rows = db.all(
         `SELECT COUNT(*) as n FROM ${table} WHERE synced = 0`

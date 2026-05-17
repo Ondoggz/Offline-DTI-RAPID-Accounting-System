@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("api", {
   addUser: (data) => ipcRenderer.invoke("user:add", data),
   getUsers: () => ipcRenderer.invoke("user:get"),
   findUser: (username) => ipcRenderer.invoke("user:find", username),
+  updateUser: (data) => ipcRenderer.invoke("user:update", data),
   deleteUser: (id) => ipcRenderer.invoke("user:delete", id),
 
   /* =========================

@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
+    localId: {
+      type: String,
+      index: true,
+    },
     username: {
       type: String,
       required: true,

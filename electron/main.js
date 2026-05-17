@@ -4,6 +4,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { app, BrowserWindow, ipcMain } = require("electron");
 const fs = require("fs");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const db = require("./db");
 const { syncToRemote, checkOnline, getPendingCount } = require("./sync");
 
@@ -93,6 +94,14 @@ function ensureDB() {
   if (!dbReady) throw new Error("Database not ready");
 }
 
+function isBcryptHash(value = "") {
+  return (
+    value.startsWith("$2a$") ||
+    value.startsWith("$2b$") ||
+    value.startsWith("$2y$")
+  );
+}
+
 function emitUpdate(channel, payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(channel, payload);
@@ -105,6 +114,7 @@ function emitAllDataUpdated() {
   emitUpdate("payments:updated");
   emitUpdate("beans:updated");
   emitUpdate("transactions:updated");
+  emitUpdate("users:updated");
 }
 
 /* =========================
@@ -197,7 +207,7 @@ ipcMain.handle("sync:pending", () => {
 /* =========================
    IPC — AUTH
 ========================= */
-ipcMain.handle("user:login", (_, { username, password }) => {
+ipcMain.handle("user:login", async (_, { username, password }) => {
   ensureDB();
 
   const users = db.getUserByUsername(username);
@@ -205,7 +215,15 @@ ipcMain.handle("user:login", (_, { username, password }) => {
 
   if (!user) return { success: false, message: "User not found" };
 
-  if (user.password !== password) {
+  let passwordMatches = false;
+
+  if (isBcryptHash(user.password)) {
+    passwordMatches = await bcrypt.compare(password, user.password);
+  } else {
+    passwordMatches = user.password === password;
+  }
+
+  if (!passwordMatches) {
     return { success: false, message: "Incorrect password" };
   }
 
@@ -244,6 +262,24 @@ ipcMain.handle("user:get", () => {
 ipcMain.handle("user:find", (_, username) => {
   ensureDB();
   return db.getUserByUsername(username);
+});
+
+ipcMain.handle("user:update", (_, data) => {
+  ensureDB();
+
+  const res = db.updateUser(data.id, {
+    name: data.name,
+    username: data.username,
+    password: data.password,
+    sex: data.sex,
+    age: data.age,
+    position: data.position,
+    role: data.role,
+  });
+
+  emitUpdate("users:updated");
+
+  return res;
 });
 
 ipcMain.handle("user:delete", (_, id) => {

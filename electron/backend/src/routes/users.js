@@ -1,5 +1,5 @@
 import express from "express";
-import bcrypt from "bcryptjs"; // ✅ ADD THIS
+import bcrypt from "bcryptjs";
 import User from "../models/user.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -12,48 +12,93 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
+const isHashedPassword = (password = "") => {
+  return (
+    password.startsWith("$2a$") ||
+    password.startsWith("$2b$") ||
+    password.startsWith("$2y$")
+  );
+};
+
 /* -------------------------
    GET USERS
 -------------------------- */
 router.get("/", protect, adminOnly, async (req, res) => {
   try {
-    const users = await User.find()
-      .select("-password") // keep hidden
-      .sort({ createdAt: -1 });
+    const users = await User.find().sort({ createdAt: -1 });
 
-    res.json({ success: true, users });
+    res.json({
+      success: true,
+      users,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
 /* -------------------------
-   CREATE USER (FIXED)
+   CREATE / SYNC USER
 -------------------------- */
 router.post("/", protect, adminOnly, async (req, res) => {
   try {
-    const { username, password, role, name, sex, age, position } = req.body;
+    const {
+      localId,
+      username,
+      password,
+      role,
+      name,
+      sex,
+      age,
+      position,
+    } = req.body;
 
-    if (!username || !password || !name) {
+    if (!username) {
+      return res.status(400).json({
+        message: "Username is required",
+      });
+    }
+
+    const existingUser = await User.findOne({
+      $or: [{ username }, ...(localId ? [{ localId }] : [])],
+    });
+
+    if (existingUser) {
+      existingUser.localId = localId || existingUser.localId;
+      existingUser.username = username;
+      existingUser.role = role || existingUser.role || "user";
+      existingUser.name = name || existingUser.name || "";
+      existingUser.sex = sex || "";
+      existingUser.age = age ? Number(age) : null;
+      existingUser.position = position || "";
+
+      if (password) {
+        existingUser.password = isHashedPassword(password)
+          ? password
+          : await bcrypt.hash(password, 10);
+      }
+
+      await existingUser.save();
+
+      return res.json({
+        success: true,
+        user: existingUser,
+      });
+    }
+
+    if (!password || !name) {
       return res.status(400).json({
         message: "Username, password, and full name are required",
       });
     }
 
-    const existingUser = await User.findOne({ username });
-
-    if (existingUser) {
-      return res.status(400).json({
-        message: "Username already exists",
-      });
-    }
-
-    // ✅ FIX: HASH PASSWORD
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const finalPassword = isHashedPassword(password)
+      ? password
+      : await bcrypt.hash(password, 10);
 
     const user = await User.create({
+      localId,
       username,
-      password: hashedPassword, // 🔥 IMPORTANT
+      password: finalPassword,
       role: role || "user",
       name,
       sex: sex || "",
@@ -63,16 +108,46 @@ router.post("/", protect, adminOnly, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      user: {
-        _id: user._id,
-        username: user.username,
-        role: user.role,
-        name: user.name,
-        sex: user.sex,
-        age: user.age,
-        position: user.position,
-        createdAt: user.createdAt,
-      },
+      user,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* -------------------------
+   UPDATE USER
+-------------------------- */
+router.put("/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const { username, password, role, name, sex, age, position } = req.body;
+
+    const updateData = {
+      username,
+      role: role || "user",
+      name,
+      sex: sex || "",
+      age: age ? Number(age) : null,
+      position: position || "",
+    };
+
+    if (password) {
+      updateData.password = isHashedPassword(password)
+        ? password
+        : await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      user: updatedUser,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

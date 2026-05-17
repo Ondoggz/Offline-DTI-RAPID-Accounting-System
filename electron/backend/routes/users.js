@@ -1,5 +1,5 @@
 import express from "express";
-import bcrypt from "bcryptjs"; // ✅ ADD THIS
+import bcrypt from "bcryptjs";
 import User from "../models/user.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -17,22 +17,34 @@ const adminOnly = (req, res, next) => {
 -------------------------- */
 router.get("/", protect, adminOnly, async (req, res) => {
   try {
-    const users = await User.find()
-      .select("-password") // keep hidden
-      .sort({ createdAt: -1 });
+    const users = await User.find().sort({ createdAt: -1 });
 
-    res.json({ success: true, users });
+    res.json({
+      success: true,
+      users,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
 /* -------------------------
-   CREATE USER (FIXED)
+   CREATE / SYNC USER
 -------------------------- */
 router.post("/", protect, adminOnly, async (req, res) => {
   try {
-    const { username, password, role, name, sex, age, position } = req.body;
+    const {
+      localId,
+      username,
+      password,
+      role,
+      name,
+      sex,
+      age,
+      position,
+      createdAt,
+      updatedAt,
+    } = req.body;
 
     if (!username || !password || !name) {
       return res.status(400).json({
@@ -40,39 +52,97 @@ router.post("/", protect, adminOnly, async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({ username });
+    const isAlreadyHashed =
+      password.startsWith("$2a$") ||
+      password.startsWith("$2b$") ||
+      password.startsWith("$2y$");
+
+    const finalPassword = isAlreadyHashed
+      ? password
+      : await bcrypt.hash(password, 10);
+
+    const existingUser = await User.findOne({
+      $or: [{ username }, ...(localId ? [{ localId }] : [])],
+    });
 
     if (existingUser) {
-      return res.status(400).json({
-        message: "Username already exists",
+      existingUser.localId = localId || existingUser.localId;
+      existingUser.username = username;
+      existingUser.password = finalPassword;
+      existingUser.role = role || "user";
+      existingUser.name = name;
+      existingUser.sex = sex || "";
+      existingUser.age = age ? Number(age) : null;
+      existingUser.position = position || "";
+
+      await existingUser.save();
+
+      return res.json({
+        success: true,
+        user: existingUser,
       });
     }
 
-    // ✅ FIX: HASH PASSWORD
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({
+      localId,
       username,
-      password: hashedPassword, // 🔥 IMPORTANT
+      password: finalPassword,
       role: role || "user",
       name,
       sex: sex || "",
       age: age ? Number(age) : null,
       position: position || "",
+      createdAt,
+      updatedAt,
     });
 
     res.status(201).json({
       success: true,
-      user: {
-        _id: user._id,
-        username: user.username,
-        role: user.role,
-        name: user.name,
-        sex: user.sex,
-        age: user.age,
-        position: user.position,
-        createdAt: user.createdAt,
-      },
+      user,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* -------------------------
+   UPDATE USER
+-------------------------- */
+router.put("/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const { username, password, role, name, sex, age, position } = req.body;
+
+    const updateData = {
+      username,
+      role: role || "user",
+      name,
+      sex: sex || "",
+      age: age ? Number(age) : null,
+      position: position || "",
+    };
+
+    if (password) {
+      const isAlreadyHashed =
+        password.startsWith("$2a$") ||
+        password.startsWith("$2b$") ||
+        password.startsWith("$2y$");
+
+      updateData.password = isAlreadyHashed
+        ? password
+        : await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      user: updatedUser,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
