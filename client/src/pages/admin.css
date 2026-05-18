@@ -157,11 +157,6 @@
   display: inline-block;
 }
 
-.input-error {
-  border: 1px solid #d00 !important;
-  background: #fff5f5 !important;
-}
-
 /* MODAL */
 .modal-overlay {
   position: fixed;
