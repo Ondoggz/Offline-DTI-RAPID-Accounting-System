@@ -39,7 +39,7 @@
   .report-controls,
   .generate-btn,
   .print-btn,
-  .error-message {
+  .warning-bubble {
     display: none !important;
   }
 
@@ -217,7 +217,7 @@
 
 /* Report Module Background */
 .report-module {
-  background-color: #ECFDF5 !important;
+  background-color: #ecfdf5 !important;
   min-height: 100vh;
   padding: 24px;
 }
@@ -287,6 +287,24 @@
   border-radius: 10px;
   border: none;
   cursor: pointer;
+}
+
+.generate-btn:disabled,
+.print-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Warning Bubble */
+.warning-bubble {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-weight: 500;
+  border: 1px solid #fdba74;
 }
 
 /* Report Title */
@@ -418,13 +436,4 @@
 .no-data {
   padding: 40px 20px !important;
   text-align: center;
-}
-
-/* Error */
-.error-message {
-  margin-top: 20px;
-  padding: 14px 18px;
-  border-radius: 12px;
-  background: #fee2e2;
-  color: #991b1b;
 }
