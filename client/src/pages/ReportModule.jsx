@@ -189,31 +189,92 @@ const ReportModule = () => {
       setExporting(true);
       setError(null);
 
-      const canvas = await html2canvas(report, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
+      const sections = report.querySelectorAll(
+        ".report-title, .charts-section, .organization-summary, .monthly-breakdown, .farmer-table-container, .no-data"
+      );
 
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      const margin = 10;
+      const usableWidth = pageWidth - margin * 2;
+      let y = margin;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      for (let i = 0; i < sections.length; i++) {
+        const section = sections[i];
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
+
+        const imgHeight = (canvas.height * usableWidth) / canvas.width;
+
+        if (imgHeight > pageHeight - margin * 2) {
+          let sourceY = 0;
+
+          while (sourceY < canvas.height) {
+            const sliceCanvas = document.createElement("canvas");
+            const sliceCtx = sliceCanvas.getContext("2d");
+
+            const sliceHeight = Math.min(
+              canvas.height - sourceY,
+              ((pageHeight - margin * 2) * canvas.width) / usableWidth
+            );
+
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceHeight;
+
+            sliceCtx.drawImage(
+              canvas,
+              0,
+              sourceY,
+              canvas.width,
+              sliceHeight,
+              0,
+              0,
+              canvas.width,
+              sliceHeight
+            );
+
+            const sliceImgData = sliceCanvas.toDataURL("image/png");
+            const sliceImgHeight =
+              (sliceCanvas.height * usableWidth) / sliceCanvas.width;
+
+            if (y !== margin) {
+              pdf.addPage();
+              y = margin;
+            }
+
+            pdf.addImage(
+              sliceImgData,
+              "PNG",
+              margin,
+              y,
+              usableWidth,
+              sliceImgHeight
+            );
+
+            sourceY += sliceHeight;
+
+            if (sourceY < canvas.height) {
+              pdf.addPage();
+              y = margin;
+            }
+          }
+        } else {
+          if (y + imgHeight > pageHeight - margin && y !== margin) {
+            pdf.addPage();
+            y = margin;
+          }
+
+          const imgData = canvas.toDataURL("image/png");
+
+          pdf.addImage(imgData, "PNG", margin, y, usableWidth, imgHeight);
+          y += imgHeight + 8;
+        }
       }
 
       pdf.save("DTI-Coffee-Bean-Report.pdf");
@@ -559,6 +620,7 @@ const ReportModule = () => {
                     .length > 0 && (
                     <div className="bean-breakdown">
                       <h4>Bean Type Breakdown</h4>
+
                       <table className="report-table">
                         <thead>
                           <tr>
