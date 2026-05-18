@@ -161,6 +161,20 @@ function AdminPage() {
 
       if (!validateForm()) return;
 
+      const usernameExists = users.some(
+        (user) =>
+          user.username?.toLowerCase().trim() ===
+          form.username.toLowerCase().trim()
+      );
+
+      if (usernameExists) {
+        setErrors((prev) => ({
+          ...prev,
+          username: "Username already exists",
+        }));
+        return;
+      }
+
       const res = await window.api.addUser({
         id: Date.now().toString(),
         name: form.name,

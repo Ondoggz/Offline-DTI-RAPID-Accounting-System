@@ -21,6 +21,9 @@ function FarmerManagement() {
 
   const [form, setForm] = useState(initialForm);
 
+  const normalize = (value) =>
+    String(value || "").toLowerCase().trim();
+
   const fetchData = async () => {
     try {
       const [farmersRes, beansRes] = await Promise.all([
@@ -101,9 +104,36 @@ function FarmerManagement() {
   const validateForm = () => {
     const newErrors = {};
 
+    const existingFarmers = farmers.filter(
+      (farmer) => farmer.id !== form.id
+    );
+
+    const farmerIDExists = existingFarmers.some(
+      (farmer) =>
+        normalize(farmer.farmerID) === normalize(form.farmerID)
+    );
+
+    const farmerNameExists = existingFarmers.some(
+      (farmer) =>
+        normalize(farmer.name) === normalize(form.name)
+    );
+
+    const contactNumberExists = existingFarmers.some(
+      (farmer) =>
+        String(farmer.contactNumber || "").trim() ===
+        String(form.contactNumber || "").trim()
+    );
+
+    const emailAddressExists = existingFarmers.some(
+      (farmer) =>
+        normalize(farmer.emailAddress) === normalize(form.emailAddress)
+    );
+
     // Farmer ID
     if (!form.farmerID.trim()) {
       newErrors.farmerID = "Farmer ID required";
+    } else if (farmerIDExists) {
+      newErrors.farmerID = "Farmer ID already exists";
     }
 
     // Full name — must have at least 3 words
@@ -114,6 +144,8 @@ function FarmerManagement() {
       if (wordCount < 3) {
         newErrors.name =
           "Include first name, middle name, and surname. Use N/A if no middle name.";
+      } else if (farmerNameExists) {
+        newErrors.name = "Farmer name already exists";
       }
     }
 
@@ -142,11 +174,17 @@ function FarmerManagement() {
       newErrors.contactNumber = "Contact number required";
     } else if (!/^\d{11}$/.test(form.contactNumber)) {
       newErrors.contactNumber = "Contact number must be exactly 11 digits";
+    } else if (contactNumberExists) {
+      newErrors.contactNumber = "Contact number already exists";
     }
 
     // Email
     if (!form.emailAddress.trim()) {
       newErrors.emailAddress = "Email required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress)) {
+      newErrors.emailAddress = "Enter a valid email address";
+    } else if (emailAddressExists) {
+      newErrors.emailAddress = "Email already exists";
     }
 
     // Beans — at least one selected
@@ -360,37 +398,37 @@ function FarmerManagement() {
             const otherSelected = form.beans.filter((b, idx) => b && idx !== i);
 
             return (
-            <div
-              key={i}
-              style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
-            >
-              <select
-                value={bean}
-                onChange={(e) => handleBeanChange(i, e.target.value)}
+              <div
+                key={i}
+                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
               >
-                <option value="">Select bean</option>
-                {beans.map((b) => (
-                  <option
-                    key={b.id}
-                    value={b.id}
-                    disabled={otherSelected.includes(b.id)}
-                  >
-                    {b.beanName}
-                    {otherSelected.includes(b.id) ? " (already added)" : ""}
-                  </option>
-                ))}
-              </select>
+                <select
+                  value={bean}
+                  onChange={(e) => handleBeanChange(i, e.target.value)}
+                >
+                  <option value="">Select bean</option>
+                  {beans.map((b) => (
+                    <option
+                      key={b.id}
+                      value={b.id}
+                      disabled={otherSelected.includes(b.id)}
+                    >
+                      {b.beanName}
+                      {otherSelected.includes(b.id) ? " (already added)" : ""}
+                    </option>
+                  ))}
+                </select>
 
-              <button type="button" onClick={addBeanField}>
-                +
-              </button>
-
-              {form.beans.length > 1 && (
-                <button type="button" onClick={() => removeBeanField(i)}>
-                  -
+                <button type="button" onClick={addBeanField}>
+                  +
                 </button>
-              )}
-            </div>
+
+                {form.beans.length > 1 && (
+                  <button type="button" onClick={() => removeBeanField(i)}>
+                    -
+                  </button>
+                )}
+              </div>
             );
           })}
           {errors.beans && <div style={bubbleStyle}>{errors.beans}</div>}
