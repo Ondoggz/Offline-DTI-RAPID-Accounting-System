@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./transactions.css";
 
 function TransactionHistory() {
   const [transactions, setTransactions] = useState([]);

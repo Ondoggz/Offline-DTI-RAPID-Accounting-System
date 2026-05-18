@@ -1,0 +1,130 @@
+.transaction-container {
+  padding: 24px;
+  background: #ecfdf5;
+  min-height: 100vh;
+  color: #111;
+}
+
+.transaction-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.transaction-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 12px;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.transaction-header {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.transaction-header strong {
+  font-size: 16px;
+}
+
+.transaction-amount-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.status-badge {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.status-paid {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.transaction-details {
+  margin-top: 12px;
+}
+
+.transaction-details p {
+  margin: 6px 0;
+}
+
+.transaction-divider {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 12px 0;
+}
+
+.payment-list p {
+  margin: 6px 0;
+}
+
+.payment-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.payment-form input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111;
+  outline: none;
+}
+
+.payment-form input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+}
+
+.payment-form button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #4caf50;
+  color: white;
+  cursor: pointer;
+}
+
+.payment-form button:hover {
+  opacity: 0.9;
+}
+
+.warning-bubble {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-weight: 500;
+  border: 1px solid #fdba74;
+}
+
+.fully-paid-box {
+  width: fit-content;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 600;
+}
+
+.empty-text {
+  color: #6b7280;
+}
