@@ -198,7 +198,7 @@ function App() {
     ? "Forms Generation"
     : item === "reports"
     ? "Reports"
-    : "Transactions";
+    : "Transactions History";
 };
 
 const getModuleCode = (item) => {

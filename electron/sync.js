@@ -16,7 +16,7 @@ const { URL } = require("url");
 ========================= */
 const REMOTE_BASE_URL = (
   process.env.REMOTE_API_URL ||
-  "http://168.144.44.32:3000"
+  "https://dti-accounting-system.onrender.com"
 ).replace(/\/$/, "");
 
 const SYNC_USERNAME = process.env.SYNC_USERNAME || "admin";
