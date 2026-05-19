@@ -50,8 +50,9 @@ export const createDelivery = async (req, res) => {
       consigneeContact: req.body.consigneeContact,
       recordedBy: req.body.recordedBy || "Unknown User",
       proofOfDelivery: req.file
-        ? req.file.filename
+        ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`
         : req.body.proofOfDelivery || "",
+        
       volume,
       pricePerUnit,
       totalAmount,

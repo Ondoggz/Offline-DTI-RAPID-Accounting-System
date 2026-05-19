@@ -56,16 +56,33 @@ function BeanManagement({ beans, setBeans }) {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!form.name.trim()) {
+    const cleanedName = form.name.trim();
+    const cleanedPrice = Number(form.pricePerUnit);
+    const cleanedUnit = form.unit.trim();
+
+    if (!cleanedName) {
       newErrors.name = "Bean name is required";
     }
 
-    if (!form.pricePerUnit || Number(form.pricePerUnit) <= 0) {
+    if (!form.pricePerUnit || cleanedPrice <= 0) {
       newErrors.pricePerUnit = "Enter a valid price";
     }
 
-    if (!form.unit.trim()) {
+    if (!cleanedUnit) {
       newErrors.unit = "Unit is required";
+    }
+
+    const duplicateBean = beans.find(
+      (bean) =>
+        bean.id !== form.id &&
+        bean.name.trim().toLowerCase() === cleanedName.toLowerCase() &&
+        Number(bean.pricePerUnit) === cleanedPrice &&
+        bean.unit.trim().toLowerCase() === cleanedUnit.toLowerCase()
+    );
+
+    if (duplicateBean) {
+      newErrors.name =
+        "Duplicate bean already exists with the same name, price, and unit.";
     }
 
     setErrors(newErrors);

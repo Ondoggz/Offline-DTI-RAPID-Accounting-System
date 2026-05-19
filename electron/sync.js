@@ -16,7 +16,7 @@ const { URL } = require("url");
 ========================= */
 const REMOTE_BASE_URL = (
   process.env.REMOTE_API_URL ||
-  "https://dti-accounting-system-backend-ycyg.onrender.com"
+  "http://168.144.44.32:3000"
 ).replace(/\/$/, "");
 
 const SYNC_USERNAME = process.env.SYNC_USERNAME || "admin";
@@ -156,6 +156,40 @@ async function loginToRemote() {
     console.error("[SYNC] Login error:", err.message);
     return false;
   }
+}
+
+/* =========================
+   REMOTE DELETE HELPER
+========================= */
+async function deleteRemoteRecord(path, body = null) {
+  if (!authToken) {
+    const loggedIn = await loginToRemote();
+
+    if (!loggedIn) {
+      throw new Error("Could not authenticate with remote server");
+    }
+  }
+
+  const res = await remoteRequest("DELETE", path, body);
+
+  if (res.status === 404) {
+    return {
+      success: true,
+      alreadyDeleted: true,
+      body: res.body,
+    };
+  }
+
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(
+      `Remote delete failed: ${res.status} ${JSON.stringify(res.body)}`
+    );
+  }
+
+  return {
+    success: true,
+    body: res.body,
+  };
 }
 
 /* =========================
@@ -1168,4 +1202,5 @@ module.exports = {
   pullFromRemote,
   checkOnline,
   getPendingCount,
+  deleteRemoteRecord,
 };

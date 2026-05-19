@@ -10,16 +10,15 @@ function DeliveryEntry() {
   const [beans, setBeans] = useState([]);
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
+  const [imageErrors, setImageErrors] = useState({});
 
-  // 🔥 DELETE MODAL STATE
   const [deleteId, setDeleteId] = useState(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
 
   const getRecordedBy = () => {
-    if (user?.name && user?.position)
-      return `${user.name} (${user.position})`;
-
+    if (user?.name && user?.position) return `${user.name} (${user.position})`;
     return user?.name || user?.username || "Unknown User";
   };
 
@@ -39,6 +38,24 @@ function DeliveryEntry() {
 
   const [form, setForm] = useState(emptyForm);
 
+  const fileToDataUrl = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve("");
+
+      const reader = new FileReader();
+
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "N/A";
+    return String(date).slice(0, 10);
+  };
+
   const fetchData = async () => {
     try {
       const [dRes, fRes, bRes] = await Promise.all([
@@ -47,15 +64,31 @@ function DeliveryEntry() {
         window.api.getBeans(),
       ]);
 
-      const safeDeliveries = (dRes || []).map((d) => ({
-        id: String(d.id),
-        farmer: d.farmer,
-        beanType: d.beanType,
-        date: d.date,
-        volume: d.volume,
-        pricePerUnit: d.pricePerUnit,
-        totalAmount: d.totalAmount,
-      }));
+      const safeDeliveries = (dRes || [])
+        .map((d) => ({
+          id: String(d.id),
+          farmer: d.farmer,
+          farmerContact: d.farmerContact,
+          beanType: d.beanType,
+          courier: d.courier,
+          date: d.date,
+          deliveryGuy: d.deliveryGuy,
+          consignee: d.consignee,
+          deliveryGuyContact: d.deliveryGuyContact,
+          consigneeContact: d.consigneeContact,
+          recordedBy: d.recordedBy,
+          volume: d.volume,
+          pricePerUnit: d.pricePerUnit,
+          totalAmount: d.totalAmount,
+          proofOfDelivery: d.proofOfDelivery || "",
+          createdAt: d.createdAt,
+          updatedAt: d.updatedAt,
+        }))
+        .sort((a, b) => {
+          const bTime = new Date(b.createdAt || b.updatedAt || b.date || 0).getTime();
+          const aTime = new Date(a.createdAt || a.updatedAt || a.date || 0).getTime();
+          return bTime - aTime;
+        });
 
       setDeliveries(safeDeliveries);
       setFarmers(fRes || []);
@@ -72,16 +105,17 @@ function DeliveryEntry() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // 🔥 CONTACT NUMBER VALIDATION
-    if (
-      name === "deliveryGuyContact" ||
-      name === "consigneeContact"
-    ) {
+    if (name === "deliveryGuyContact" || name === "consigneeContact") {
       const numbersOnly = value.replace(/\D/g, "").slice(0, 11);
 
       setForm((prev) => ({
         ...prev,
         [name]: numbersOnly,
+      }));
+
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
       }));
 
       return;
@@ -96,6 +130,11 @@ function DeliveryEntry() {
         farmerContact: selectedFarmer?.contactNumber || "",
       }));
 
+      setErrors((prev) => ({
+        ...prev,
+        farmer: "",
+      }));
+
       return;
     }
 
@@ -103,11 +142,14 @@ function DeliveryEntry() {
       ...prev,
       [name]: value,
     }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
   };
 
-  const selectedBean = beans.find(
-    (b) => b.beanName === form.beanType
-  );
+  const selectedBean = beans.find((b) => b.beanName === form.beanType);
 
   const pricePerUnit = Number(selectedBean?.pricePerUnit || 0);
   const volume = Number(form.volume || 0);
@@ -120,121 +162,113 @@ function DeliveryEntry() {
     });
 
     setFile(null);
+    setErrors({});
   };
 
-const validateForm = () => {
-  const newErrors = {};
+  const validateForm = () => {
+    const newErrors = {};
 
-  if (!form.farmer) newErrors.farmer = "Select a farmer";
-  if (!form.beanType) newErrors.beanType = "Select a bean type";
+    if (!form.farmer) newErrors.farmer = "Select a farmer";
+    if (!form.beanType) newErrors.beanType = "Select a bean type";
 
-  if (!form.volume || Number(form.volume) <= 0)
-    newErrors.volume = "Enter a valid volume";
+    if (!form.volume || Number(form.volume) <= 0) {
+      newErrors.volume = "Enter a valid volume";
+    }
 
-  if (!form.courier) newErrors.courier = "Courier is required";
-  if (!form.date) newErrors.date = "Pick a date";
+    if (!form.courier) newErrors.courier = "Courier is required";
+    if (!form.date) newErrors.date = "Pick a date";
 
-  if (!form.deliveryGuy)
-    newErrors.deliveryGuy = "Delivery guy is required";
+    if (!form.deliveryGuy) {
+      newErrors.deliveryGuy = "Delivery guy is required";
+    }
 
-  if (!form.deliveryGuyContact)
-    newErrors.deliveryGuyContact = "Enter contact number";
-  else if (form.deliveryGuyContact.length !== 11)
-    newErrors.deliveryGuyContact = "Must be 11 digits";
+    if (!form.deliveryGuyContact) {
+      newErrors.deliveryGuyContact = "Enter contact number";
+    } else if (form.deliveryGuyContact.length !== 11) {
+      newErrors.deliveryGuyContact = "Must be 11 digits";
+    }
 
-  if (!form.consignee)
-    newErrors.consignee = "Consignee is required";
+    if (!form.consignee) {
+      newErrors.consignee = "Consignee is required";
+    }
 
-  if (!form.consigneeContact)
-    newErrors.consigneeContact = "Enter contact number";
-  else if (form.consigneeContact.length !== 11)
-    newErrors.consigneeContact = "Must be 11 digits";
+    if (!form.consigneeContact) {
+      newErrors.consigneeContact = "Enter contact number";
+    } else if (form.consigneeContact.length !== 11) {
+      newErrors.consigneeContact = "Must be 11 digits";
+    }
 
-  return newErrors;
-};
+    return newErrors;
+  };
 
-const handleSubmit = async () => {
-  const validationErrors = validateForm();
+  const handleSubmit = async () => {
+    const validationErrors = validateForm();
 
-  // ❌ if there are errors, stop submit
-  if (Object.keys(validationErrors).length > 0) {
-    setErrors(validationErrors);
-    return;
-  }
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
-  // ✅ clear errors if everything is valid
-  setErrors({});
+    setErrors({});
 
-  try {
-    const payload = {
-      id: crypto.randomUUID(),
-      farmer: form.farmer,
-      farmerContact: form.farmerContact,
-      beanType: form.beanType,
-      courier: form.courier,
-      date: form.date,
-      deliveryGuy: form.deliveryGuy,
-      consignee: form.consignee,
-      deliveryGuyContact: form.deliveryGuyContact,
-      consigneeContact: form.consigneeContact,
-      recordedBy: form.recordedBy,
-      volume: Number(form.volume),
-      pricePerUnit,
-      totalAmount,
-      proofOfDelivery: file ? file.name : "",
-    };
+    try {
+      const proofOfDeliveryDataUrl = file ? await fileToDataUrl(file) : "";
 
-    await window.api.addDelivery(payload);
-    await fetchData();
+      const payload = {
+        id: crypto.randomUUID(),
+        farmer: form.farmer,
+        farmerContact: form.farmerContact,
+        beanType: form.beanType,
+        courier: form.courier,
+        date: form.date,
+        deliveryGuy: form.deliveryGuy,
+        consignee: form.consignee,
+        deliveryGuyContact: form.deliveryGuyContact,
+        consigneeContact: form.consigneeContact,
+        recordedBy: form.recordedBy,
+        volume: Number(form.volume),
+        pricePerUnit,
+        totalAmount,
+        proofOfDelivery: proofOfDeliveryDataUrl,
+      };
 
-    setShowForm(false);
-    resetForm();
+      await window.api.addDelivery(payload);
+      await fetchData();
 
-  } catch (err) {
-    console.error("SAVE ERROR:", err);
-    setModal({
-      type: "alert",
-      message: "Failed to save delivery.",
-    });
-  }
-};
+      setShowForm(false);
+      resetForm();
+    } catch (err) {
+      console.error("SAVE ERROR:", err);
+    }
+  };
 
-  // 🔥 DELETE
   const openDelete = (id) => {
     setDeleteId(id);
     setDeletePassword("");
+    setDeleteError("");
   };
 
-    const confirmDelete = async () => {
-      try {
-        const res = await window.api.deleteDelivery(
-          deleteId,
-          deletePassword
-        );
+  const confirmDelete = async () => {
+    try {
+      const res = await window.api.deleteDelivery(deleteId, deletePassword);
 
-        // ❌ show inline error instead of alert
-        if (!res?.success) {
-          setDeleteError(res?.message || "Wrong password");
-          return;
-        }
-
-        // ✅ success → remove from UI
-        setDeliveries((prev) =>
-          prev.filter(
-            (item) => String(item.id) !== String(deleteId)
-          )
-        );
-
-        // ✅ reset everything
-        setDeleteId(null);
-        setDeletePassword("");
-        setDeleteError("");
-
-      } catch (err) {
-        console.error("DELETE ERROR:", err);
-        setDeleteError("Something went wrong");
+      if (!res?.success) {
+        setDeleteError(res?.message || "Wrong password");
+        return;
       }
-    };
+
+      setDeliveries((prev) =>
+        prev.filter((item) => String(item.id) !== String(deleteId))
+      );
+
+      setDeleteId(null);
+      setDeletePassword("");
+      setDeleteError("");
+    } catch (err) {
+      console.error("DELETE ERROR:", err);
+      setDeleteError("Something went wrong");
+    }
+  };
 
   return (
     <div className="delivery-container">
@@ -245,62 +279,291 @@ const handleSubmit = async () => {
       {!showForm && (
         <>
           <div className="delivery-actions">
-            <button
-              className="add-btn"
-              onClick={() => setShowForm(true)}
-            >
+            <button className="add-btn" onClick={() => setShowForm(true)}>
               ＋ Add an Entry
             </button>
           </div>
 
           <div className="delivery-list">
-            {deliveries.map((d) => (
-              <div key={d.id} className="delivery-item">
-                <span>
-                  {d.farmer} • {d.beanType} •{" "}
-                  {d.date?.slice(0, 10)} • Volume:{" "}
-                  {d.volume} • Price: {d.pricePerUnit} •
-                  Total: {d.totalAmount}
-                </span>
+            {deliveries.map((d) => {
+              const isExpanded = expandedId === d.id;
+              const hasImageError = imageErrors[d.id];
+              const proofImageSrc = d.proofOfDelivery;
 
-                <button
-                  className="delete-btn"
-                  onClick={() => openDelete(d.id)}
+              return (
+                <div
+                  key={d.id}
+                  className="delivery-item"
+                  style={{
+                    display: "block",
+                    padding: "16px",
+                    borderRadius: "14px",
+                    marginBottom: "14px",
+                  }}
                 >
-                  🗑 Delete
-                </button>
-              </div>
-            ))}
+                  <div
+                    onClick={() => {
+                      setExpandedId(isExpanded ? null : d.id);
+                    }}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      width: "100%",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div>
+                      <strong>
+                        {isExpanded ? "▼" : "▶"} {d.farmer || "Unknown Farmer"}
+                      </strong>
+                      <div style={{ fontSize: "13px", marginTop: "4px" }}>
+                        {d.beanType || "N/A"} • {formatDate(d.date)} • Volume:{" "}
+                        {d.volume || 0} • Total: ₱{d.totalAmount || 0}
+                      </div>
+                    </div>
+
+                    <button
+                      className="delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDelete(d.id);
+                      }}
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div
+                      className="delivery-details"
+                      style={{
+                        marginTop: "16px",
+                        padding: "16px",
+                        borderTop: "1px solid #ddd",
+                        background: "#f9fafb",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(180px, 1fr))",
+                          gap: "12px",
+                        }}
+                      >
+                        <div>
+                          <small>Farmer</small>
+                          <p>
+                            <strong>{d.farmer || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Farmer Contact</small>
+                          <p>
+                            <strong>{d.farmerContact || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Bean Type</small>
+                          <p>
+                            <strong>{d.beanType || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Volume</small>
+                          <p>
+                            <strong>{d.volume || 0}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Price Per Unit</small>
+                          <p>
+                            <strong>₱{d.pricePerUnit || 0}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Total Amount</small>
+                          <p>
+                            <strong>₱{d.totalAmount || 0}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Courier</small>
+                          <p>
+                            <strong>{d.courier || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Date</small>
+                          <p>
+                            <strong>{formatDate(d.date)}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Delivery Guy</small>
+                          <p>
+                            <strong>{d.deliveryGuy || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Delivery Guy Contact</small>
+                          <p>
+                            <strong>{d.deliveryGuyContact || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Consignee</small>
+                          <p>
+                            <strong>{d.consignee || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Consignee Contact</small>
+                          <p>
+                            <strong>{d.consigneeContact || "N/A"}</strong>
+                          </p>
+                        </div>
+
+                        <div>
+                          <small>Recorded By</small>
+                          <p>
+                            <strong>{d.recordedBy || "N/A"}</strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: "18px" }}>
+                        <small>Proof of Delivery</small>
+
+                        {proofImageSrc && !hasImageError ? (
+                          <div
+                            style={{
+                              marginTop: "8px",
+                              padding: "10px",
+                              background: "#fff",
+                              border: "1px solid #ddd",
+                              borderRadius: "12px",
+                              maxWidth: "380px",
+                            }}
+                          >
+                            <img
+                              src={proofImageSrc}
+                              alt="Proof of Delivery"
+                              onError={() =>
+                                setImageErrors((prev) => ({
+                                  ...prev,
+                                  [d.id]: true,
+                                }))
+                              }
+                              style={{
+                                width: "100%",
+                                maxHeight: "280px",
+                                objectFit: "contain",
+                                borderRadius: "10px",
+                                display: "block",
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <p style={{ marginTop: "6px" }}>
+                            No viewable proof of delivery uploaded.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
 
-      {/* 🔥 DELETE MODAL */}
-    {deleteId && (
-      <div className="modal">
-        <div className="modal-box">
-          <h3>Enter Admin Password</h3>
-
-          <input
-            type="password"
-            value={deletePassword}
-            className={deleteError ? "input-error" : ""}
-            onChange={(e) => {
-              setDeletePassword(e.target.value);
-              setDeleteError("");
+      {deleteId && (
+        <div
+          className="modal"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.45)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: "20px",
+          }}
+          onClick={() => {
+            setDeleteId(null);
+            setDeletePassword("");
+            setDeleteError("");
+          }}
+        >
+          <div
+            className="modal-box"
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              background: "#fff",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
             }}
-          />
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Enter Admin Password</h3>
 
-          {deleteError && (
-            <span className="error-text">{deleteError}</span>
-          )}
-            <div className="modal-actions">
-              <button onClick={confirmDelete}>
-                Confirm
-              </button>
+            <input
+              type="password"
+              value={deletePassword}
+              className={deleteError ? "input-error" : ""}
+              placeholder="Admin password"
+              onChange={(e) => {
+                setDeletePassword(e.target.value);
+                setDeleteError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmDelete();
+              }}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+              }}
+              autoFocus
+            />
+
+            {deleteError && <span className="error-text">{deleteError}</span>}
+
+            <div
+              className="modal-actions"
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+                marginTop: "18px",
+              }}
+            >
+              <button onClick={confirmDelete}>Confirm</button>
 
               <button
-                onClick={() => setDeleteId(null)}
+                onClick={() => {
+                  setDeleteId(null);
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
               >
                 Cancel
               </button>
@@ -311,8 +574,6 @@ const handleSubmit = async () => {
 
       {showForm && (
         <div className="form-grid">
-
-          {/* FARMER */}
           <div className="form-group">
             <label>Farmer</label>
             <select
@@ -333,13 +594,11 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* FARMER CONTACT */}
           <div className="form-group">
             <label>Farmer Contact No.</label>
             <input value={form.farmerContact} readOnly />
           </div>
 
-          {/* BEAN TYPE */}
           <div className="form-group">
             <label>Bean Type</label>
             <select
@@ -360,7 +619,6 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* VOLUME */}
           <div className="form-group">
             <label>Volume</label>
             <input
@@ -375,19 +633,16 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* PRICE */}
           <div className="form-group">
             <label>Price per Unit</label>
             <input value={pricePerUnit} readOnly />
           </div>
 
-          {/* TOTAL */}
           <div className="form-group">
             <label>Total Amount</label>
             <input value={totalAmount} readOnly />
           </div>
 
-          {/* COURIER */}
           <div className="form-group">
             <label>Courier</label>
             <input
@@ -401,7 +656,6 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* DATE */}
           <div className="form-group">
             <label>Date</label>
             <input
@@ -416,7 +670,6 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* DELIVERY GUY */}
           <div className="form-group">
             <label>Delivery Guy</label>
             <input
@@ -430,7 +683,6 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* DELIVERY GUY CONTACT */}
           <div className="form-group">
             <label>Delivery Guy Contact</label>
             <input
@@ -450,7 +702,6 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* CONSIGNEE */}
           <div className="form-group">
             <label>Consignee</label>
             <input
@@ -464,7 +715,6 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* CONSIGNEE CONTACT */}
           <div className="form-group">
             <label>Consignee Contact</label>
             <input
@@ -484,22 +734,20 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          {/* FILE */}
           <div className="form-group">
             <label>Proof of Delivery</label>
             <input
               type="file"
+              accept="image/*"
               onChange={(e) => setFile(e.target.files[0])}
             />
           </div>
 
-          {/* RECORDED BY */}
           <div className="form-group">
             <label>Recorded By</label>
             <input value={form.recordedBy} readOnly />
           </div>
 
-          {/* ACTIONS */}
           <div className="form-actions">
             <button className="save-btn" onClick={handleSubmit}>
               Save
@@ -515,11 +763,10 @@ const handleSubmit = async () => {
               Cancel
             </button>
           </div>
-
         </div>
       )}
-          </div>
-        );
-      }
+    </div>
+  );
+}
 
 export default DeliveryEntry;

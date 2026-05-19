@@ -6,7 +6,12 @@ const fs = require("fs");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const db = require("./db");
-const { syncToRemote, checkOnline, getPendingCount } = require("./sync");
+const {
+  syncToRemote,
+  checkOnline,
+  getPendingCount,
+  deleteRemoteRecord,
+} = require("./sync");
 
 let dbReady = false;
 let mainWindow = null;
@@ -116,6 +121,44 @@ function emitAllDataUpdated() {
   emitUpdate("beans:updated");
   emitUpdate("transactions:updated");
   emitUpdate("users:updated");
+}
+
+async function ensureOnlineForDelete() {
+  const online = await checkOnline();
+
+  if (!online) {
+    return {
+      success: false,
+      message: "Cannot delete while offline. Please connect to the internet and sync first.",
+    };
+  }
+
+  return { success: true };
+}
+
+function getLocalRow(table, id) {
+  const rows = db.all(`SELECT * FROM ${table} WHERE id = ?`, [id]);
+  return rows[0] || null;
+}
+
+async function deleteRemoteFirst({ table, id, remotePath, body = null }) {
+  const localRow = getLocalRow(table, id);
+
+  if (!localRow) {
+    return {
+      success: false,
+      message: "Local record not found.",
+    };
+  }
+
+  if (localRow.remoteId) {
+    await deleteRemoteRecord(`${remotePath}/${localRow.remoteId}`, body);
+  }
+
+  return {
+    success: true,
+    localRow,
+  };
 }
 
 /* =========================
@@ -316,11 +359,30 @@ ipcMain.handle("user:update", (_, data) => {
   return res;
 });
 
-ipcMain.handle("user:delete", (_, id) => {
+ipcMain.handle("user:delete", async (_, id) => {
   ensureDB();
-  const res = db.deleteUser(id);
-  emitUpdate("users:updated");
-  return res;
+
+  const onlineCheck = await ensureOnlineForDelete();
+  if (!onlineCheck.success) return onlineCheck;
+
+  try {
+    await deleteRemoteFirst({
+      table: "users",
+      id,
+      remotePath: "/users",
+    });
+
+    const res = db.deleteUser(id);
+    emitUpdate("users:updated");
+
+    return { success: true, result: res };
+  } catch (err) {
+    console.error("DELETE USER ERROR:", err);
+    return {
+      success: false,
+      message: "Remote delete failed. Local record was not deleted.",
+    };
+  }
 });
 
 /* =========================
@@ -338,11 +400,30 @@ ipcMain.handle("bean:get", () => {
   return db.getBeans();
 });
 
-ipcMain.handle("bean:delete", (_, id) => {
+ipcMain.handle("bean:delete", async (_, id) => {
   ensureDB();
-  const res = db.deleteBean(id);
-  emitUpdate("beans:updated");
-  return res;
+
+  const onlineCheck = await ensureOnlineForDelete();
+  if (!onlineCheck.success) return onlineCheck;
+
+  try {
+    await deleteRemoteFirst({
+      table: "beans",
+      id,
+      remotePath: "/api/beans",
+    });
+
+    const res = db.deleteBean(id);
+    emitUpdate("beans:updated");
+
+    return { success: true, result: res };
+  } catch (err) {
+    console.error("DELETE BEAN ERROR:", err);
+    return {
+      success: false,
+      message: "Remote delete failed. Local record was not deleted.",
+    };
+  }
 });
 
 /* =========================
@@ -367,11 +448,30 @@ ipcMain.handle("farmer:update", (_, { id, data }) => {
   return res;
 });
 
-ipcMain.handle("farmer:delete", (_, id) => {
+ipcMain.handle("farmer:delete", async (_, id) => {
   ensureDB();
-  const res = db.deleteFarmer(id);
-  emitUpdate("farmers:updated");
-  return res;
+
+  const onlineCheck = await ensureOnlineForDelete();
+  if (!onlineCheck.success) return onlineCheck;
+
+  try {
+    await deleteRemoteFirst({
+      table: "farmers",
+      id,
+      remotePath: "/api/farmers",
+    });
+
+    const res = db.deleteFarmer(id);
+    emitUpdate("farmers:updated");
+
+    return { success: true, result: res };
+  } catch (err) {
+    console.error("DELETE FARMER ERROR:", err);
+    return {
+      success: false,
+      message: "Remote delete failed. Local record was not deleted.",
+    };
+  }
 });
 
 /* =========================
@@ -390,11 +490,14 @@ ipcMain.handle("delivery:get", () => {
   return db.getDeliveries();
 });
 
-ipcMain.handle("delivery:delete", (_, payload) => {
+ipcMain.handle("delivery:delete", async (_, payload) => {
   ensureDB();
 
   const { id, password } = payload || {};
   if (!id) return { success: false, message: "Missing ID" };
+
+  const onlineCheck = await ensureOnlineForDelete();
+  if (!onlineCheck.success) return onlineCheck;
 
   const ADMIN_PASSWORD = process.env.ADMIN_DELETE_PASSWORD || "admin123";
 
@@ -403,13 +506,24 @@ ipcMain.handle("delivery:delete", (_, payload) => {
   }
 
   try {
+    await deleteRemoteFirst({
+      table: "deliveries",
+      id,
+      remotePath: "/api/deliveries",
+      body: { password },
+    });
+
     const res = db.deleteDelivery(id);
     emitUpdate("deliveries:updated");
     emitUpdate("transactions:updated");
+
     return { success: true, result: res };
   } catch (err) {
     console.error("DELETE DELIVERY ERROR:", err);
-    return { success: false, message: "DB error" };
+    return {
+      success: false,
+      message: "Remote delete failed. Local record was not deleted.",
+    };
   }
 });
 

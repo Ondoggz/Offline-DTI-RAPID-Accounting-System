@@ -8,17 +8,12 @@ import {
 
 const router = express.Router();
 
-// 📸 file storage setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
   },
 });
-
-const upload = multer({ storage });
 
 // CREATE delivery WITH IMAGE
 router.post("/", upload.single("proofOfDelivery"), createDelivery);
