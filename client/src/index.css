@@ -146,12 +146,11 @@ p {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 18px;
-  margin-top: 18px;
   align-items: start;
 }
 
 .module-card {
-  min-height: 165px;
+  min-height: 210px;
   padding: 22px;
   border-radius: 24px;
   background: #ffffff;
@@ -167,13 +166,6 @@ p {
     border-color 0.18s ease;
 }
 
-.module-card:nth-child(2n) {
-  min-height: 205px;
-}
-
-.module-card:nth-child(3n) {
-  min-height: 185px;
-}
 
 .module-card:hover {
   transform: translateY(-5px);
@@ -312,6 +304,11 @@ p {
   background: var(--green-50);
   color: var(--green-700);
   border: 1px solid rgba(16, 185, 129, 0.14);
+}
+
+.avatar svg {
+  width: 80%;
+  height: 80%;
 }
 
 .profile-card h3 {

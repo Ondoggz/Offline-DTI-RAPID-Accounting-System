@@ -316,7 +316,7 @@ function DeliveryEntry() {
                   >
                     <div>
                       <strong>
-                        {isExpanded ? "▼" : "▶"} {d.farmer || "Unknown Farmer"}
+                      {d.farmer || "Unknown Farmer"}
                       </strong>
                       <div style={{ fontSize: "13px", marginTop: "4px" }}>
                         {d.beanType || "N/A"} • {formatDate(d.date)} • Volume:{" "}

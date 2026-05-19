@@ -23,7 +23,7 @@
       "package.json"
     ],
     "asar": false,
-        "extraResources": [
+    "extraResources": [
       {
         "from": "client/dist",
         "to": "client/dist"
@@ -56,6 +56,7 @@
     }
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "docxtemplater": "^3.0.0",
     "dotenv": "^17.4.2",
     "electron-store": "^11.0.2",
