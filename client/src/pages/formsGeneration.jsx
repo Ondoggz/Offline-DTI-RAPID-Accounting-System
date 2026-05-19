@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import { saveAs } from "file-saver";
+import "./formsGeneration.css";
 
 function FormsGeneration() {
   const [farmers, setFarmers] = useState([]);
@@ -256,215 +257,244 @@ function FormsGeneration() {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div className="forms-container">
       <h2>Forms Generation</h2>
 
-      <div style={{ display: "grid", gap: "10px", maxWidth: "900px" }}>
-        <div>
-          <select
-            name="farmerId"
-            value={form.farmerId}
-            onChange={handleFormChange}
-            className={errors.farmerId ? "input-error" : ""}
-          >
-            <option value="">Select Farmer</option>
-            {farmers.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
+      <div className="forms-card">
+        <h3>Farmer and Delivery Details</h3>
 
-          {errors.farmerId && (
-            <small className="error-bubble">{errors.farmerId}</small>
-          )}
-        </div>
+        <div className="forms-grid">
+          <div>
+            <select
+              name="farmerId"
+              value={form.farmerId}
+              onChange={handleFormChange}
+              className={errors.farmerId ? "input-error" : ""}
+            >
+              <option value="">Select Farmer</option>
+              {farmers.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
 
-        <div>
-          <input
-            type="datetime-local"
-            name="deliveryDT"
-            value={form.deliveryDT}
-            onChange={handleFormChange}
-            onInput={(e) => e.target.blur()}
-            className={errors.deliveryDT ? "input-error" : ""}
-          />
+            {errors.farmerId && (
+              <small className="error-bubble">{errors.farmerId}</small>
+            )}
+          </div>
 
-          {errors.deliveryDT && (
-            <small className="error-bubble">{errors.deliveryDT}</small>
-          )}
-        </div>
+          <div>
+            <input
+              type="datetime-local"
+              name="deliveryDT"
+              value={form.deliveryDT}
+              onChange={handleFormChange}
+              onInput={(e) => e.target.blur()}
+              className={errors.deliveryDT ? "input-error" : ""}
+            />
 
-        <div>
-          <input
-            name="beanOrigin"
-            placeholder="Bean Origin"
-            value={form.beanOrigin}
-            onChange={handleFormChange}
-            className={errors.beanOrigin ? "input-error" : ""}
-          />
-          {errors.beanOrigin && (
-            <small className="error-bubble">{errors.beanOrigin}</small>
-          )}
-        </div>
+            {errors.deliveryDT && (
+              <small className="error-bubble">{errors.deliveryDT}</small>
+            )}
+          </div>
 
-        <div>
-          <input
-            name="beanAltitude"
-            placeholder="Bean Altitude"
-            value={form.beanAltitude}
-            onChange={handleFormChange}
-            className={errors.beanAltitude ? "input-error" : ""}
-          />
-          {errors.beanAltitude && (
-            <small className="error-bubble">{errors.beanAltitude}</small>
-          )}
-        </div>
+          <div>
+            <input
+              name="beanOrigin"
+              placeholder="Bean Origin"
+              value={form.beanOrigin}
+              onChange={handleFormChange}
+              className={errors.beanOrigin ? "input-error" : ""}
+            />
+            {errors.beanOrigin && (
+              <small className="error-bubble">{errors.beanOrigin}</small>
+            )}
+          </div>
 
-        <div>
-          <input
-            name="remarks"
-            placeholder="Remarks"
-            value={form.remarks}
-            onChange={handleFormChange}
-            className={errors.remarks ? "input-error" : ""}
-          />
-          {errors.remarks && (
-            <small className="error-bubble">{errors.remarks}</small>
-          )}
-        </div>
+          <div>
+            <input
+              name="beanAltitude"
+              placeholder="Bean Altitude"
+              value={form.beanAltitude}
+              onChange={handleFormChange}
+              className={errors.beanAltitude ? "input-error" : ""}
+            />
+            {errors.beanAltitude && (
+              <small className="error-bubble">{errors.beanAltitude}</small>
+            )}
+          </div>
 
-        <div>
-          <input
-            name="receiverName"
-            placeholder="Receiver Name"
-            value={form.receiverName}
-            onChange={handleFormChange}
-            className={errors.receiverName ? "input-error" : ""}
-          />
-          {errors.receiverName && (
-            <small className="error-bubble">{errors.receiverName}</small>
-          )}
-        </div>
+          <div>
+            <input
+              name="remarks"
+              placeholder="Remarks"
+              value={form.remarks}
+              onChange={handleFormChange}
+              className={errors.remarks ? "input-error" : ""}
+            />
+            {errors.remarks && (
+              <small className="error-bubble">{errors.remarks}</small>
+            )}
+          </div>
 
-        <div>
-          <input
-            name="payorName"
-            placeholder="Payor Name"
-            value={form.payorName}
-            onChange={handleFormChange}
-            className={errors.payorName ? "input-error" : ""}
-          />
-          {errors.payorName && (
-            <small className="error-bubble">{errors.payorName}</small>
-          )}
+          <div>
+            <input
+              name="receiverName"
+              placeholder="Receiver Name"
+              value={form.receiverName}
+              onChange={handleFormChange}
+              className={errors.receiverName ? "input-error" : ""}
+            />
+            {errors.receiverName && (
+              <small className="error-bubble">{errors.receiverName}</small>
+            )}
+          </div>
+
+          <div>
+            <input
+              name="payorName"
+              placeholder="Payor Name"
+              value={form.payorName}
+              onChange={handleFormChange}
+              className={errors.payorName ? "input-error" : ""}
+            />
+            {errors.payorName && (
+              <small className="error-bubble">{errors.payorName}</small>
+            )}
+          </div>
         </div>
       </div>
 
-      <h3 style={{ marginTop: "20px" }}>Rows</h3>
-
-      {errors.rows && <small className="error-bubble">{errors.rows}</small>}
-
-      {rows.map((row, i) => {
-        const bean = getBeanById(row.beanId);
-        const unitCost = bean?.pricePerUnit || 0;
-        const total = unitCost * (row.volume || 0);
-        const rowError = errors.rowErrors?.[i] || {};
-
-        return (
-          <div
-            key={i}
-            style={{
-              border: "1px solid #ccc",
-              padding: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <strong>Row {i + 1}</strong>
-
-            <div>
-              <input
-                value={row.arNo}
-                placeholder="AR No"
-                onChange={(e) => handleRowChange(i, "arNo", e.target.value)}
-                className={rowError.arNo ? "input-error" : ""}
-              />
-
-              {rowError.arNo && (
-                <small className="error-bubble">{rowError.arNo}</small>
-              )}
-            </div>
-
-            <div>
-              <select
-                value={row.beanId}
-                onChange={(e) => handleRowChange(i, "beanId", e.target.value)}
-                className={rowError.beanId ? "input-error" : ""}
-              >
-                <option value="">Select Bean</option>
-                {beans.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-
-              {rowError.beanId && (
-                <small className="error-bubble">{rowError.beanId}</small>
-              )}
-            </div>
-
-            <input value={unitCost} readOnly />
-
-            <div>
-              <input
-                type="number"
-                placeholder="Volume"
-                value={row.volume}
-                onChange={(e) => handleRowChange(i, "volume", e.target.value)}
-                className={rowError.volume ? "input-error" : ""}
-              />
-
-              {rowError.volume && (
-                <small className="error-bubble">{rowError.volume}</small>
-              )}
-            </div>
-
-            <input value={total} readOnly />
-
-            <div>
-              <input
-                type="datetime-local"
-                value={row.paymentDT}
-                onChange={(e) => {
-                  handleRowChange(i, "paymentDT", e.target.value);
-                  e.target.blur();
-                }}
-                className={rowError.paymentDT ? "input-error" : ""}
-              />
-
-              {rowError.paymentDT && (
-                <small className="error-bubble">{rowError.paymentDT}</small>
-              )}
-            </div>
-
-            <input
-              placeholder="Remarks"
-              value={row.remarks2}
-              onChange={(e) => handleRowChange(i, "remarks2", e.target.value)}
-            />
-
-            <button onClick={() => removeRow(i)}>Remove</button>
+      <div className="forms-card">
+        <div className="forms-section-header">
+          <div>
+            <h3>Rows</h3>
+            <p>Add one or more acknowledgment receipt rows.</p>
           </div>
-        );
-      })}
 
-      <button onClick={addRow}>+ Add Row</button>
+          <button className="forms-secondary-btn" onClick={addRow}>
+            + Add Row
+          </button>
+        </div>
 
-      <h3>Grand Total: ₱{grandTotal.toFixed(2)}</h3>
+        {errors.rows && <small className="error-bubble">{errors.rows}</small>}
 
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button onClick={exportDocx}>Export DOCX</button>
+        {rows.map((row, i) => {
+          const bean = getBeanById(row.beanId);
+          const unitCost = bean?.pricePerUnit || 0;
+          const total = unitCost * (row.volume || 0);
+          const rowError = errors.rowErrors?.[i] || {};
+
+          return (
+            <div key={i} className="forms-row-card">
+              <div className="forms-row-title">
+                <strong>Row {i + 1}</strong>
+
+                <button
+                  className="forms-danger-btn"
+                  onClick={() => removeRow(i)}
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="forms-row-grid">
+                <div>
+                  <input
+                    value={row.arNo}
+                    placeholder="AR No"
+                    onChange={(e) =>
+                      handleRowChange(i, "arNo", e.target.value)
+                    }
+                    className={rowError.arNo ? "input-error" : ""}
+                  />
+
+                  {rowError.arNo && (
+                    <small className="error-bubble">{rowError.arNo}</small>
+                  )}
+                </div>
+
+                <div>
+                  <select
+                    value={row.beanId}
+                    onChange={(e) =>
+                      handleRowChange(i, "beanId", e.target.value)
+                    }
+                    className={rowError.beanId ? "input-error" : ""}
+                  >
+                    <option value="">Select Bean</option>
+                    {beans.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {rowError.beanId && (
+                    <small className="error-bubble">{rowError.beanId}</small>
+                  )}
+                </div>
+
+                <input value={unitCost} readOnly />
+
+                <div>
+                  <input
+                    type="number"
+                    placeholder="Volume"
+                    value={row.volume}
+                    onChange={(e) =>
+                      handleRowChange(i, "volume", e.target.value)
+                    }
+                    className={rowError.volume ? "input-error" : ""}
+                  />
+
+                  {rowError.volume && (
+                    <small className="error-bubble">{rowError.volume}</small>
+                  )}
+                </div>
+
+                <input value={total} readOnly />
+
+                <div>
+                  <input
+                    type="datetime-local"
+                    value={row.paymentDT}
+                    onChange={(e) => {
+                      handleRowChange(i, "paymentDT", e.target.value);
+                      e.target.blur();
+                    }}
+                    className={rowError.paymentDT ? "input-error" : ""}
+                  />
+
+                  {rowError.paymentDT && (
+                    <small className="error-bubble">{rowError.paymentDT}</small>
+                  )}
+                </div>
+
+                <input
+                  placeholder="Remarks"
+                  value={row.remarks2}
+                  onChange={(e) =>
+                    handleRowChange(i, "remarks2", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="forms-footer">
+          <div className="forms-total">
+            Grand Total: ₱{grandTotal.toFixed(2)}
+          </div>
+
+          <div className="forms-actions">
+            <button className="forms-primary-btn" onClick={exportDocx}>
+              Export DOCX
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

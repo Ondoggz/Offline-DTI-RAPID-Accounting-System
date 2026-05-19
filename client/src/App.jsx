@@ -158,13 +158,13 @@ function App() {
   }, []);
 
   const handleLoginSuccess = async (user) => {
-  setIsLoggedIn(true);
-  setCurrentUser(user);
+    setIsLoggedIn(true);
+    setCurrentUser(user);
 
-  localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem("user", JSON.stringify(user));
 
-  resetInactivityTimer();
-  await fetchBeans();
+    resetInactivityTimer();
+    await fetchBeans();
   };
 
   const handleLogout = () => clearSession();
@@ -184,6 +184,38 @@ function App() {
     "reports",
     "transactions",
   ];
+
+  const getModuleLabel = (item) => {
+  return item === "admin"
+    ? "Admin"
+    : item === "farmers"
+    ? "Farmer Management"
+    : item === "beans"
+    ? "Bean Management"
+    : item === "delivery"
+    ? "Delivery Entry"
+    : item === "forms"
+    ? "Forms Generation"
+    : item === "reports"
+    ? "Reports"
+    : "Transactions";
+};
+
+const getModuleCode = (item) => {
+  return item === "admin"
+    ? "AD"
+    : item === "farmers"
+    ? "FM"
+    : item === "beans"
+    ? "BM"
+    : item === "delivery"
+    ? "DE"
+    : item === "forms"
+    ? "FG"
+    : item === "reports"
+    ? "GR"
+    : "TH";
+};
 
   const renderMainContent = () => {
     switch (selectedModule) {
@@ -224,22 +256,9 @@ function App() {
                   className="module-card"
                   onClick={() => setSelectedModule(item)}
                 >
-                  <div className="icon">📄</div>
-                  <p>
-                    {item === "admin"
-                      ? "Admin"
-                      : item === "farmers"
-                      ? "Farmer Management"
-                      : item === "beans"
-                      ? "Bean Management"
-                      : item === "delivery"
-                      ? "Delivery Entry"
-                      : item === "forms"
-                      ? "Forms Generation"
-                      : item === "reports"
-                      ? "Generate Reports"
-                      : "Transaction History"}
-                  </p>
+                  <div className="module-code">{getModuleCode(item)}</div>
+                      <p>{getModuleLabel(item)}</p>
+                        <span>Open module</span>
                 </div>
               ))}
             </div>
@@ -256,7 +275,6 @@ function App() {
 
   return (
     <div className="app-layout">
-      {/* MAIN */}
       <div className="main">
         <div className="header">
           <div className="logo-container">
@@ -281,7 +299,6 @@ function App() {
         {renderMainContent()}
       </div>
 
-      {/* SIDEBAR (RESTORED FULLY) */}
       <div className="sidebar">
         <div className="profile-card">
           <div className="avatar">👤</div>

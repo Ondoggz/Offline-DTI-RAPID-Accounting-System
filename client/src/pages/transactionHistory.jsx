@@ -8,9 +8,6 @@ function TransactionHistory() {
   const [amounts, setAmounts] = useState({});
   const [errors, setErrors] = useState({});
 
-  /* =========================
-     LOAD OFFLINE DATA
-  ========================= */
   const fetchTransactions = async () => {
     try {
       const deliveries = await window.api.getDeliveries();
@@ -84,9 +81,6 @@ function TransactionHistory() {
     }));
   };
 
-  /* =========================
-     ADD PAYMENT (OFFLINE)
-  ========================= */
   const addPayment = async (id) => {
     const amount = Number(amounts[id] || 0);
     const balance = Number(details[id]?.summary?.balance || 0);
@@ -135,173 +129,158 @@ function TransactionHistory() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Transactions</h2>
+    <div className="transaction-container">
+      <div className="transaction-header-main">
+        <div>
+          <h2 className="transaction-title">Transactions</h2>
+          <p>Track delivery balances and payment progress.</p>
+        </div>
+      </div>
 
       {errors.global && (
-        <div className="warning-bubble">
-          ⚠️ {errors.global}
-        </div>
+        <div className="warning-bubble">⚠️ {errors.global}</div>
       )}
 
       {transactions.length === 0 && (
-        <p style={{ color: "#6b7280" }}>No transactions found.</p>
+        <div className="transaction-empty">
+          <p>No transactions found.</p>
+        </div>
       )}
 
-      {transactions.map((t) => {
-        const data = details[t.id];
-        const summary = data?.summary;
-        const payments = data?.payments;
-        const balance = Number(summary?.balance ?? 0);
+      <div className="transaction-list">
+        {transactions.map((t) => {
+          const data = details[t.id];
+          const summary = data?.summary;
+          const payments = data?.payments;
+          const balance = Number(summary?.balance ?? 0);
+          const isOpen = openId === t.id;
 
-        return (
-          <div
-            key={t.id}
-            style={{
-              border: "1px solid #ddd",
-              marginBottom: 10,
-              padding: 10,
-              borderRadius: 6,
-              background: "#fff",
-            }}
-          >
-            {/* HEADER */}
-            <div
-              onClick={() => toggle(t.id)}
-              style={{
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <strong>{t.farmer}</strong>
-
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                {summary && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      padding: "2px 8px",
-                      borderRadius: 10,
-                      background:
-                        summary.status === "PAID" ? "#d1fae5" : "#fef3c7",
-                      color:
-                        summary.status === "PAID" ? "#065f46" : "#92400e",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {summary.status}
-                  </span>
-                )}
-
-                <span>₱{Number(t.totalAmount || 0).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* DROPDOWN */}
-            {openId === t.id && (
-              <div style={{ marginTop: 10 }}>
-                {errors[t.id] && (
-                  <div className="warning-bubble">
-                    ⚠️ {errors[t.id]}
-                  </div>
-                )}
-
-                <p>Bean: {t.beanType}</p>
-
-                <p>
-                  Date:{" "}
-                  {t.date ? new Date(t.date).toLocaleDateString() : "—"}
-                </p>
-
-                <hr />
-
-                {summary ? (
-                  <>
-                    <p>Total: ₱{Number(t.totalAmount || 0).toFixed(2)}</p>
-                    <p>Paid: ₱{Number(summary.totalPaid || 0).toFixed(2)}</p>
-                    <p>Balance: ₱{Number(balance).toFixed(2)}</p>
-                    <p>Status: {balance <= 0 ? "Fully Paid" : summary.status}</p>
-                  </>
-                ) : (
-                  <p>Loading summary...</p>
-                )}
-
-                <hr />
-
-                <h4>Payments</h4>
-
-                {payments?.length > 0 ? (
-                  payments.map((p, i) => (
-                    <p key={i}>
-                      ₱{Number(p.amountPaid || 0).toFixed(2)}
-                      {p.createdAt && (
-                        <span
-                          style={{
-                            color: "#6b7280",
-                            fontSize: 12,
-                            marginLeft: 8,
-                          }}
-                        >
-                          {new Date(p.createdAt).toLocaleDateString()}
-                        </span>
-                      )}
-                    </p>
-                  ))
-                ) : (
-                  <p>No payments yet</p>
-                )}
-
-                <hr />
-
-                {balance > 0 ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      marginTop: 8,
-                    }}
-                  >
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder={`Enter payment (max ₱${Number(
-                        balance
-                      ).toFixed(2)})`}
-                      value={amounts[t.id] || ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-
-                        if (val === "" || /^\d*\.?\d*$/.test(val)) {
-                          setAmounts((prev) => ({
-                            ...prev,
-                            [t.id]: val,
-                          }));
-
-                          setErrors((prev) => ({
-                            ...prev,
-                            [t.id]: "",
-                          }));
-                        }
-                      }}
-                    />
-
-                    <button onClick={() => addPayment(t.id)}>
-                      Add Payment
-                    </button>
-                  </div>
-                ) : (
-                  <p style={{ color: "#065f46", fontWeight: 600 }}>
-                    ✓ Fully paid
+          return (
+            <div key={t.id} className="transaction-card">
+              <div
+                onClick={() => toggle(t.id)}
+                className="transaction-header"
+              >
+                <div>
+                  <strong>{t.farmer}</strong>
+                  <p>
+                    {t.beanType || "N/A"} •{" "}
+                    {t.date ? new Date(t.date).toLocaleDateString() : "—"}
                   </p>
-                )}
+                </div>
+
+                <div className="transaction-amount-group">
+                  {summary && (
+                    <span
+                      className={`status-badge ${
+                        summary.status === "PAID"
+                          ? "status-paid"
+                          : "status-pending"
+                      }`}
+                    >
+                      {summary.status}
+                    </span>
+                  )}
+
+                  <span className="transaction-total">
+                    ₱{Number(t.totalAmount || 0).toFixed(2)}
+                  </span>
+                </div>
               </div>
-            )}
-          </div>
-        );
-      })}
+
+              {isOpen && (
+                <div className="transaction-details">
+                  {errors[t.id] && (
+                    <div className="warning-bubble">⚠️ {errors[t.id]}</div>
+                  )}
+
+                  <div className="transaction-summary-grid">
+                    <div>
+                      <small>Total</small>
+                      <strong>₱{Number(t.totalAmount || 0).toFixed(2)}</strong>
+                    </div>
+
+                    <div>
+                      <small>Paid</small>
+                      <strong>
+                        ₱{Number(summary?.totalPaid || 0).toFixed(2)}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <small>Balance</small>
+                      <strong>₱{Number(balance).toFixed(2)}</strong>
+                    </div>
+
+                    <div>
+                      <small>Status</small>
+                      <strong>{balance <= 0 ? "Fully Paid" : summary?.status}</strong>
+                    </div>
+                  </div>
+
+                  <div className="transaction-section">
+                    <h4>Payments</h4>
+
+                    {payments?.length > 0 ? (
+                      <div className="payment-list">
+                        {payments.map((p, i) => (
+                          <div key={i} className="payment-item">
+                            <strong>
+                              ₱{Number(p.amountPaid || 0).toFixed(2)}
+                            </strong>
+
+                            {p.createdAt && (
+                              <span>
+                                {new Date(p.createdAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-text">No payments yet</p>
+                    )}
+                  </div>
+
+                  {balance > 0 ? (
+                    <div className="payment-form">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder={`Enter payment (max ₱${Number(
+                          balance
+                        ).toFixed(2)})`}
+                        value={amounts[t.id] || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+
+                          if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                            setAmounts((prev) => ({
+                              ...prev,
+                              [t.id]: val,
+                            }));
+
+                            setErrors((prev) => ({
+                              ...prev,
+                              [t.id]: "",
+                            }));
+                          }
+                        }}
+                      />
+
+                      <button onClick={() => addPayment(t.id)}>
+                        Add Payment
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="fully-paid-box">Fully paid</div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
