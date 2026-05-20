@@ -140,6 +140,7 @@ function createTables() {
     CREATE TABLE IF NOT EXISTS deliveries (
       id TEXT PRIMARY KEY,
       remoteId TEXT,
+      referenceNo TEXT,
       farmer TEXT,
       farmerContact TEXT,
       beanType TEXT,
@@ -197,6 +198,7 @@ function createTables() {
   db.run(`
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
+      referenceNo TEXT,
       farmerName TEXT,
       beanType TEXT,
       volume REAL,
@@ -357,20 +359,52 @@ function deleteFarmer(id) {
 /* =========================
    DELIVERIES
 ========================= */
+function generateReference(prefix = "DEL") {
+  const year = new Date().getFullYear();
+
+  const rows = all(`
+    SELECT referenceNo 
+    FROM deliveries 
+    WHERE referenceNo LIKE ?
+  `, [`${prefix}-${year}-%`]);
+
+  let max = 0;
+
+  for (const r of rows) {
+    if (!r.referenceNo) continue;
+
+    const match = r.referenceNo.match(/-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num)) {
+        max = Math.max(max, num);
+      }
+    }
+  }
+
+  const next = max + 1;
+
+  return `${prefix}-${year}-${String(next).padStart(4, "0")}`;
+}
+
 function addDelivery(d) {
   const now = new Date().toISOString();
   const total = (d.volume || 0) * (d.pricePerUnit || 0);
 
+  const referenceNo = d.referenceNo || generateReference("DEL");
+
   run(
     `
     INSERT INTO deliveries (
-      id, remoteId, farmer, farmerContact, beanType, courier, date,
+      id, remoteId, referenceNo,
+      farmer, farmerContact, beanType, courier, date,
       deliveryGuy, consignee, deliveryGuyContact, consigneeContact,
       proofOfDelivery, recordedBy, volume, pricePerUnit,
       totalAmount, createdAt, updatedAt, synced
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     ON CONFLICT(id) DO UPDATE SET
+      referenceNo = excluded.referenceNo,
       farmer = excluded.farmer,
       farmerContact = excluded.farmerContact,
       beanType = excluded.beanType,
@@ -391,6 +425,8 @@ function addDelivery(d) {
     [
       d.id,
       d.remoteId || null,
+      referenceNo, // ✅ NEW FIELD
+
       d.farmer,
       d.farmerContact,
       d.beanType,
@@ -426,15 +462,18 @@ function deleteDelivery(id) {
    TRANSACTIONS SYNC
 ========================= */
 function syncTransactionsFromDeliveries() {
+  const now = new Date().toISOString();
+
   run(`DELETE FROM transactions`);
 
   const deliveries = getDeliveries();
 
   deliveries.forEach((d) => {
     run(
-      `INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transactions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         d.id,
+        d.referenceNo || "",
         d.farmer,
         d.beanType,
         d.volume,
@@ -442,8 +481,8 @@ function syncTransactionsFromDeliveries() {
         d.date,
         "Auto-generated from delivery",
         d.recordedBy,
-        new Date().toISOString(),
-        new Date().toISOString(),
+        now,
+        now,
       ]
     );
   });

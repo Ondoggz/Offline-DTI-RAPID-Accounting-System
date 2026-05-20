@@ -282,7 +282,7 @@ const getModuleCode = (item) => {
             <div>
               <h2 className="system-name">DTI Accounting System</h2>
               <p className="system-subtitle">
-                Palamboun Farmers Association
+                Palamboon Farmers Association
               </p>
             </div>
           </div>

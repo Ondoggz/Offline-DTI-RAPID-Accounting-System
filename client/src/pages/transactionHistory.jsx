@@ -196,6 +196,10 @@ function TransactionHistory() {
 
                   <div className="transaction-summary-grid">
                     <div>
+                     <small>Delivery ID</small>
+                     <strong>{t.id || "N/A"}</strong>
+                    </div>
+                    <div>
                       <small>Total</small>
                       <strong>₱{Number(t.totalAmount || 0).toFixed(2)}</strong>
                     </div>
