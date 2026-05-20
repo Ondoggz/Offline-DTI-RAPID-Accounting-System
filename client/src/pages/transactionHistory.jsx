@@ -196,8 +196,8 @@ function TransactionHistory() {
 
                   <div className="transaction-summary-grid">
                     <div>
-                     <small>Delivery ID</small>
-                     <strong>{t.id || "N/A"}</strong>
+                     <small>Reference Number</small>
+                     <strong>{t.referenceNo || "N/A"}</strong>
                     </div>
                     <div>
                       <small>Total</small>
