@@ -369,7 +369,7 @@ function DeliveryEntry() {
                         </div>
 
                         <div>
-                          <small>Bean Type</small>
+                          <small>Product</small>
                           <p>
                             <strong>{d.beanType || "N/A"}</strong>
                           </p>
@@ -600,14 +600,14 @@ function DeliveryEntry() {
           </div>
 
           <div className="form-group">
-            <label>Bean Type</label>
+            <label>Product</label>
             <select
               name="beanType"
               onChange={handleChange}
               value={form.beanType}
               className={errors.beanType ? "input-error" : ""}
             >
-              <option value="">Select bean</option>
+              <option value="">Select Product</option>
               {beans.map((b) => (
                 <option key={b.id} value={b.beanName}>
                   {b.beanName}

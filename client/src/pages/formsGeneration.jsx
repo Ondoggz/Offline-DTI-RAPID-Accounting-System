@@ -184,7 +184,7 @@ function FormsGeneration() {
       }
 
       if (!row.beanId) {
-        currentRowErrors.beanId = "Select a bean";
+        currentRowErrors.beanId = "Select a product";
       }
 
       if (!row.volume || Number(row.volume) <= 0) {
@@ -302,7 +302,7 @@ function FormsGeneration() {
           <div>
             <input
               name="beanOrigin"
-              placeholder="Bean Origin"
+              placeholder="Product Origin"
               value={form.beanOrigin}
               onChange={handleFormChange}
               className={errors.beanOrigin ? "input-error" : ""}
@@ -315,7 +315,7 @@ function FormsGeneration() {
           <div>
             <input
               name="beanAltitude"
-              placeholder="Bean Altitude"
+              placeholder="Product Altitude"
               value={form.beanAltitude}
               onChange={handleFormChange}
               className={errors.beanAltitude ? "input-error" : ""}
@@ -423,7 +423,7 @@ function FormsGeneration() {
                     }
                     className={rowError.beanId ? "input-error" : ""}
                   >
-                    <option value="">Select Bean</option>
+                    <option value="">Select Product</option>
                     {beans.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.name}

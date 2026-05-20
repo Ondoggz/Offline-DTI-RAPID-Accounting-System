@@ -392,7 +392,7 @@ function FarmerManagement() {
 
         {/* Beans */}
         <div>
-          <p>Beans</p>
+          <p>Product</p>
           {form.beans.map((bean, i) => {
             // Beans already selected in OTHER slots (not this one)
             const otherSelected = form.beans.filter((b, idx) => b && idx !== i);
@@ -406,7 +406,7 @@ function FarmerManagement() {
                   value={bean}
                   onChange={(e) => handleBeanChange(i, e.target.value)}
                 >
-                  <option value="">Select bean</option>
+                  <option value="">Select Product</option>
                   {beans.map((b) => (
                     <option
                       key={b.id}

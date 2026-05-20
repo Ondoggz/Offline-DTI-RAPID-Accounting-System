@@ -5,7 +5,7 @@ function BeanManagement({ beans, setBeans }) {
     id: null,
     name: "",
     pricePerUnit: "",
-    unit: "kg",
+    unit: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -27,7 +27,7 @@ function BeanManagement({ beans, setBeans }) {
 
         setBeans(mapped);
       } catch (err) {
-        console.error("Failed to load beans:", err);
+        console.error("Failed to load products:", err);
       }
     };
 
@@ -39,7 +39,7 @@ function BeanManagement({ beans, setBeans }) {
       id: null,
       name: "",
       pricePerUnit: "",
-      unit: "kg",
+      unit: "",
     });
     setErrors({});
     setIsEditing(false);
@@ -52,7 +52,6 @@ function BeanManagement({ beans, setBeans }) {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  // ✅ VALIDATION (INLINE ERROR STYLE)
   const validateForm = () => {
     const newErrors = {};
 
@@ -61,7 +60,7 @@ function BeanManagement({ beans, setBeans }) {
     const cleanedUnit = form.unit.trim();
 
     if (!cleanedName) {
-      newErrors.name = "Bean name is required";
+      newErrors.name = "Product name is required";
     }
 
     if (!form.pricePerUnit || cleanedPrice <= 0) {
@@ -72,7 +71,7 @@ function BeanManagement({ beans, setBeans }) {
       newErrors.unit = "Unit is required";
     }
 
-    const duplicateBean = beans.find(
+    const duplicateProduct = beans.find(
       (bean) =>
         bean.id !== form.id &&
         bean.name.trim().toLowerCase() === cleanedName.toLowerCase() &&
@@ -80,16 +79,15 @@ function BeanManagement({ beans, setBeans }) {
         bean.unit.trim().toLowerCase() === cleanedUnit.toLowerCase()
     );
 
-    if (duplicateBean) {
+    if (duplicateProduct) {
       newErrors.name =
-        "Duplicate bean already exists with the same name, price, and unit.";
+        "Duplicate product already exists with the same name, price, and unit.";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // 🔥 CREATE / UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -119,7 +117,7 @@ function BeanManagement({ beans, setBeans }) {
 
       resetForm();
     } catch (err) {
-      console.error("Failed to save bean:", err);
+      console.error("Failed to save product:", err);
     }
   };
 
@@ -133,11 +131,10 @@ function BeanManagement({ beans, setBeans }) {
     setIsEditing(true);
   };
 
-  // ❗ KEEP MODAL ONLY FOR DELETE (GOOD UX)
   const handleDelete = (id) => {
     setModal({
       type: "confirm",
-      message: "Are you sure you want to delete this bean?",
+      message: "Are you sure you want to delete this product?",
       onConfirm: async () => {
         try {
           await window.api.deleteBean(id);
@@ -173,9 +170,8 @@ function BeanManagement({ beans, setBeans }) {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>Bean Management</h2>
+      <h2>Product Management</h2>
 
-      {/* FORM */}
       <form
         onSubmit={handleSubmit}
         style={{
@@ -185,23 +181,21 @@ function BeanManagement({ beans, setBeans }) {
           maxWidth: "700px",
         }}
       >
-        {/* NAME */}
         <div>
           <input
             name="name"
-            placeholder="Bean name"
+            placeholder="Product name"
             value={form.name}
             onChange={handleChange}
           />
           {errors.name && <div style={errorStyle}>{errors.name}</div>}
         </div>
 
-        {/* PRICE */}
         <div>
           <input
             type="number"
             name="pricePerUnit"
-            placeholder="Price per unit"
+            placeholder="Price"
             value={form.pricePerUnit}
             onChange={handleChange}
           />
@@ -210,11 +204,11 @@ function BeanManagement({ beans, setBeans }) {
           )}
         </div>
 
-        {/* UNIT */}
         <div>
           <input
+            type="text"
             name="unit"
-            placeholder="Unit"
+            placeholder="Unit, e.g. per kg, per piece, per sack"
             value={form.unit}
             onChange={handleChange}
           />
@@ -223,7 +217,7 @@ function BeanManagement({ beans, setBeans }) {
 
         <div style={{ display: "flex", gap: "10px" }}>
           <button type="submit">
-            {isEditing ? "Update Bean" : "Add Bean"}
+            {isEditing ? "Update Product" : "Add Product"}
           </button>
 
           {isEditing && (
@@ -234,11 +228,10 @@ function BeanManagement({ beans, setBeans }) {
         </div>
       </form>
 
-      {/* TABLE */}
       <table border="1" cellPadding="10" style={{ width: "100%" }}>
         <thead>
           <tr>
-            <th>Bean Name</th>
+            <th>Product Name</th>
             <th>Price</th>
             <th>Unit</th>
             <th>Farmers</th>
@@ -266,7 +259,6 @@ function BeanManagement({ beans, setBeans }) {
         </tbody>
       </table>
 
-      {/* DELETE MODAL (kept) */}
       {modal && (
         <div className="modal-overlay">
           <div className="modal-box">
