@@ -280,9 +280,9 @@ const getModuleCode = (item) => {
           <div className="logo-container">
             <img src={dtiLogo} className="main-logo" />
             <div>
-              <h2 className="system-name">DTI Accounting System</h2>
+              <h2 className="system-name">Bayanihan Millenium Multi-Purpose Cooperative</h2>
               <p className="system-subtitle">
-                Palamboon Farmers Association
+                DTI Accounting System
               </p>
             </div>
           </div>
