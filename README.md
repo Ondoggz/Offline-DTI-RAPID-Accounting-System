@@ -97,7 +97,9 @@ Make sure it is fully downloade
 Make sure to:
 
 1.) Replace MONGODB ATLAS URI
+
 2.) Deploy own BACKEND server
+
  -- PER ASSOCIATION --
 
  
