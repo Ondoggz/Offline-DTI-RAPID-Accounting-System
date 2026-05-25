@@ -91,3 +91,13 @@ Make sure it is fully downloade
 ## seed user: 
 ### username: admin
 ### password: admin123
+
+## IT Notes
+
+Make sure to:
+
+1.) Replace MONGODB ATLAS URI
+2.) Deploy own BACKEND server
+ -- PER ASSOCIATION --
+
+ 
