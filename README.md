@@ -48,7 +48,7 @@ Create a Desktop shortcut
 Add the app to the Start Menu
 ▶️ Step 4: Launch the Application
 
-After installation:
+### After installation:
 
 Open via Desktop shortcut
 OR
@@ -78,13 +78,13 @@ View real-time statistics
 Generate monthly reports with charts
 
 ## ❗ Troubleshooting
-⚠️ App won’t open
+### ⚠️ App won’t open
 Run as Administrator
 Restart your computer
-⚠️ Blocked by antivirus
+### ⚠️ Blocked by antivirus
 Temporarily disable antivirus
 Or allow the app manually
-⚠️ Installer not working
+### ⚠️ Installer not working
 Re-download the file
 Make sure it is fully downloade
 
