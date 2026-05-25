@@ -1,14 +1,14 @@
-📦 DTI Accounting System — Installer Guide
+# 📦 DTI Accounting System — Installer Guide 
 
-Bayanihan Millenium Multi-Purpose Cooperative
+## Bayanihan Millenium Multi-Purpose Cooperative 
 
 This guide explains how to download, install, and use the desktop version of the DTI Accounting System.
 
 The system is packaged as an Electron application, meaning it works like a normal Windows program—no coding or setup required.
 
-📖 About the System
+## 📖 About the System
 
-The DTI Accounting System is a desktop application designed to help manage:
+### The DTI Accounting System is a desktop application designed to help manage:
 
 Farmer records
 Coffee bean deliveries
@@ -18,7 +18,7 @@ Monthly financial reports
 
 It simplifies and digitizes the operations of the Palambuon Farmers Association.
 
-📥 Step 1: Download the Installer
+## 📥 Step 1: Download the Installer
 
 Download the application from the Google Drive link:
 
@@ -28,20 +28,21 @@ After downloading:
 
 Go to your Downloads folder
 Locate the .exe installer file
-⚙️ Step 2: Run the Installer
+
+## ⚙️ Step 2: Run the Installer
 Double-click the .exe file
 If a Windows warning appears:
 Click More info
 Click Run anyway
 
-💡 This is normal for apps without a digital signature.
+### 💡 This is normal for apps without a digital signature.
 
-🧩 Step 3: Install the Application
+## 🧩 Step 3: Install the Application
 Follow the on-screen instructions
 Choose installation location (if prompted)
 Wait for installation to complete
 
-The installer may:
+### The installer may:
 
 Create a Desktop shortcut
 Add the app to the Start Menu
@@ -52,30 +53,31 @@ After installation:
 Open via Desktop shortcut
 OR
 Search DTI Accounting System in the Start Menu
-🧠 How to Use the System
+
+## 🧠 How to Use the System
 
 Once opened, you can access the following modules:
 
-🔐 Authentication
+### 🔐 Authentication
 Login and create users by admin
 Secure access using account credentials
-👨‍🌾 Farmer Management
+### 👨‍🌾 Farmer Management
 Add, edit, and manage farmer profiles
-🌱 Bean Management
+### 🌱 Bean Management
 Manage coffee bean types and pricing
-🚚 Delivery Entry
+### 🚚 Delivery Entry
 Record deliveries
 Automatically calculate totals
-🧾 Acknowledgement Receipt
+### 🧾 Acknowledgement Receipt
 Generate printable receipts for deliveries
-💰 Payment Module
+### 💰 Payment Module
 Record payments
 Generate payment forms
-📊 Dashboard & Reports
+### 📊 Dashboard & Reports
 View real-time statistics
 Generate monthly reports with charts
 
-❗ Troubleshooting
+## ❗ Troubleshooting
 ⚠️ App won’t open
 Run as Administrator
 Restart your computer
