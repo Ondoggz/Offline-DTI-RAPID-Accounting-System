@@ -88,9 +88,10 @@ Or allow the app manually
 Re-download the file
 Make sure it is fully downloade
 
-## seed user: 
-### username: admin
-### password: admin123
+## Seed user: 
+username: admin
+
+password: admin123
 
 ## IT Notes
 
