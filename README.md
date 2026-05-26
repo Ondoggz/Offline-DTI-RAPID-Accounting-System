@@ -1,162 +1,106 @@
-# 🌾 DTI Accounting System
+# 📦 DTI Accounting System — Installer Guide 
 
-> **Palambuon Farmers Association** — Kaatuan, Lantapan, Bukidnon
+## Bayanihan Millenium Multi-Purpose Cooperative 
 
-A web-based accounting and delivery management system for the Palambuon Farmers Association. The system digitizes farmer delivery records, auto-generates Acknowledgement Receipts and Payment Forms, tracks coffee bean volumes, and produces monthly financial reports with graphical dashboards.
+This guide explains how to download, install, and use the desktop version of the DTI Accounting System.
 
----
+The system is packaged as an Electron application, meaning it works like a normal Windows program—no coding or setup required.
 
-## 👥 Team Members
+## 📖 About the System
 
-| Name | Role | Feature Branch |
-|------|------|----------------|
-| Nicole Salagantin | Farmer Management & Auth | `feature/farmer-management` |
-| Eros Uzziel Dagbay | Delivery Entry & Volume Tracking | `feature/delivery-entry` |
-| Sean Khalil A. Hembrador | Acknowledgement Receipt & Payment | `feature/acknowledgement-receipt` |
-| Louis Ondrej Llamas | Report Generator & Dashboard | `feature/report-generator` |
+### The DTI Accounting System is a desktop application designed to help manage:
 
----
+Farmer records
+Coffee bean deliveries
+Payment tracking
+Acknowledgement receipts
+Monthly financial reports
 
-## 🛠️ Tech Stack
+It simplifies and digitizes the operations of the Palambuon Farmers Association.
 
-| Layer | Technology |
-|-------|------------|
-| Front-End | React.js + Vite + Tailwind CSS |
-| Back-End | Node.js + Express.js |
-| Database | MongoDB (via Docker) |
-| Authentication | JWT (JSON Web Tokens) |
-| Charts | Chart.js |
-| Environment | Docker + Docker Compose |
+## 📥 Step 1: Download the Installer
 
----
+Download the application from the Google Drive link:
 
-## 📁 Project Structure
+👉 https://drive.google.com/drive/folders/1Xrvpx5Hazdc1eKuROhngdbft1V7zrffR?usp=sharing
 
-```
-dti-accounting-system/
-├── client/                  # React.js front-end (Vite)
-│   ├── src/
-│   │   ├── pages/           # Module pages (Dashboard, Farmers, Delivery, etc.)
-│   │   ├── components/      # Reusable UI components
-│   │   └── App.jsx
-│   ├── .env
-│   └── Dockerfile
-├── server/                  # Node.js + Express back-end
-│   ├── routes/              # API route handlers
-│   ├── models/              # MongoDB/Mongoose schemas
-│   ├── middleware/          # Auth middleware (JWT)
-│   ├── index.js
-│   ├── .env
-│   └── Dockerfile
-├── docker-compose.yml       # Orchestrates all containers
-└── README.md
-```
+After downloading:
 
----
+Go to your Downloads folder
+Locate the .exe installer file
 
-## 🚀 Getting Started
+## ⚙️ Step 2: Run the Installer
+Double-click the .exe file
+If a Windows warning appears:
+Click More info
+Click Run anyway
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- [Git](https://git-scm.com/) installed
+### 💡 This is normal for apps without a digital signature.
 
-### 1. Clone the repository
+## 🧩 Step 3: Install the Application
+Follow the on-screen instructions
+Choose installation location (if prompted)
+Wait for installation to complete
 
-```bash
-git clone https://github.com/<your-group-org>/dti-accounting-system.git
-cd dti-accounting-system
-```
+### The installer may:
 
-### 2. Set up environment variables
+Create a Desktop shortcut
+Add the app to the Start Menu
+▶️ Step 4: Launch the Application
 
-**client/.env**
-```env
-VITE_API_URL=http://localhost:3000
-```
+### After installation:
 
-**server/.env**
-```env
-PORT=3000
-DATABASE_URL=mongodb://mongo:27017/dti_db
-FRONTEND_URL=http://localhost:5173
-JWT_SECRET=your_jwt_secret_here
-```
+Open via Desktop shortcut
+OR
+Search DTI Accounting System in the Start Menu
 
-### 3. Start the full stack with Docker
+## 🧠 How to Use the System
 
-```bash
-docker-compose up --build
-```
+Once opened, you can access the following modules:
 
-### 4. Access the application
+### 🔐 Authentication
+Login and create users by admin
+Secure access using account credentials
+### 👨‍🌾 Farmer Management
+Add, edit, and manage farmer profiles
+### 🌱 Bean Management
+Manage coffee bean types and pricing
+### 🚚 Delivery Entry
+Record deliveries
+Automatically calculate totals
+### 🧾 Acknowledgement Receipt
+Generate printable receipts for deliveries
+### 💰 Payment Module
+Record payments
+Generate payment forms
+### 📊 Dashboard & Reports
+View real-time statistics
+Generate monthly reports with charts
 
-| Service | URL |
-|---------|-----|
-| React Front-End | http://localhost:5173 |
-| Express API | http://localhost:3000 |
-| API Health Check | http://localhost:3000/api |
-| MongoDB | mongodb://localhost:27017 |
+## ❗ Troubleshooting
+### ⚠️ App won’t open
+Run as Administrator
+Restart your computer
+### ⚠️ Blocked by antivirus
+Temporarily disable antivirus
+Or allow the app manually
+### ⚠️ Installer not working
+Re-download the file
+Make sure it is fully downloade
 
----
+## Seed user: 
+username: admin
 
-## 🌿 Branch Structure
+password: admin123
 
-This repository follows a structured Git branching strategy:
+## IT Notes
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Production-ready, stable codebase. Never commit directly. |
-| `staging` | Staging environment for system & acceptance testing. |
-| `develop` | Integration branch — all feature branches are merged here first. |
-| `feature/*` | One branch per developer/module. Merged into `develop` via Pull Request. |
+Make sure to:
 
-> See each branch's own `README.md` for branch-specific instructions.
+1.) Replace MONGODB ATLAS URI
 
----
+2.) Deploy own BACKEND server
 
-## 🧩 System Modules
+ -- PER ASSOCIATION --
 
-- **Login / Signup** — JWT-based authentication with role-based access control
-- **Dashboard** — Real-time charts and KPI summary cards
-- **Farmer Management** — CRUD operations for farmer profiles
-- **Bean Management** — Coffee bean types, varieties, and unit costs
-- **Delivery Entry** — Record deliveries with auto-calculated total payables
-- **Acknowledgement Receipt** — Auto-generated, print-ready AR forms
-- **Payment Module** — Payment recording and Payment Form generation
-- **Transaction History** — Complete filterable log of all transactions
-- **Report Generator** — Monthly consolidated reports with Chart.js visualizations
-
----
-
-## 📋 API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Server health check |
-| GET | `/api` | API + DB connectivity check |
-| GET/POST | `/api/farmers` | Get all / Create farmer |
-| GET/PUT/DELETE | `/api/farmers/:id` | Get / Update / Delete farmer |
-| GET/POST | `/api/deliveries` | Get all / Create delivery |
-| GET | `/api/receipts/:deliveryId` | Generate Acknowledgement Receipt |
-| GET/POST | `/api/payments` | Get all / Record payment |
-| GET | `/api/reports/monthly` | Monthly consolidated report |
-
----
-
-## 🐳 Docker Services
-
-```yaml
-services:
-  client:   # React front-end  → port 5173
-  server:   # Express API      → port 3000
-  mongo:    # MongoDB           → port 27017
-```
-
----
-
-## 📄 License
-
-This project was developed as an academic requirement.  
-**Course:** Web Systems and Technologies  
-**Instructor:** Ma'am Guen Gabutin  
-**Institution:** [Your School Name]
+ ### The "beans/bean" variable was not changed to product as there was insufficient time for a code overhaul. Products still uses beans as variable in calls.
