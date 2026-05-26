@@ -103,4 +103,4 @@ Make sure to:
 
  -- PER ASSOCIATION --
 
- 
+ ### "beans/bean" variable was not changed to product as there was insufficient time for a code overhaul. Products still uses beans as variable in calls.
