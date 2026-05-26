@@ -68,12 +68,14 @@ function FormsGeneration() {
     const bean = getBeanById(row.beanId);
     const unitCost = Number(bean?.pricePerUnit || 0);
     const volume = Number(row.volume || 0);
+    const totalAmount = unitCost * volume;
 
     return {
       ...row,
       particulars: bean?.name || "",
       unitCost,
-      totalAmount: unitCost * volume,
+      totalAmount,
+      totalPayable: totalAmount,
     };
   });
 
@@ -81,6 +83,90 @@ function FormsGeneration() {
     (sum, r) => sum + Number(r.totalAmount || 0),
     0
   );
+
+  const amountToWords = (amount) => {
+    const ones = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen",
+    ];
+
+    const tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety",
+    ];
+
+    const convertHundreds = (num) => {
+      let str = "";
+
+      if (num > 99) {
+        str += ones[Math.floor(num / 100)] + " Hundred ";
+        num %= 100;
+      }
+
+      if (num > 19) {
+        str += tens[Math.floor(num / 10)] + " ";
+        num %= 10;
+      }
+
+      if (num > 0) {
+        str += ones[num] + " ";
+      }
+
+      return str.trim();
+    };
+
+    const convert = (num) => {
+      if (num === 0) return "Zero";
+
+      let result = "";
+
+      if (Math.floor(num / 1000000) > 0) {
+        result += convertHundreds(Math.floor(num / 1000000)) + " Million ";
+        num %= 1000000;
+      }
+
+      if (Math.floor(num / 1000) > 0) {
+        result += convertHundreds(Math.floor(num / 1000)) + " Thousand ";
+        num %= 1000;
+      }
+
+      if (num > 0) {
+        result += convertHundreds(num);
+      }
+
+      return result.trim();
+    };
+
+    const wholeNumber = Math.floor(Number(amount || 0));
+
+    return `${convert(wholeNumber)} Pesos Only`;
+  };
 
   const handleFormChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -226,6 +312,7 @@ function FormsGeneration() {
     receiverName: form.receiverName,
     payorName: form.payorName,
     amountInFigures: grandTotal,
+    amountInWords: amountToWords(grandTotal),
     rows: computedRows,
   });
 

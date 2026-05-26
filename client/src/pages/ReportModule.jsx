@@ -31,12 +31,27 @@ ChartJS.register(
 const ReportModule = () => {
   const [reportType, setReportType] = useState("both");
   const [rangeType, setRangeType] = useState("single");
+  const [scaleType, setScaleType] = useState("monthly");
+
+  const [day, setDay] = useState(new Date().toISOString().slice(0, 10));
+  const [startDay, setStartDay] = useState(new Date().toISOString().slice(0, 10));
+  const [endDay, setEndDay] = useState(new Date().toISOString().slice(0, 10));
+
+  const [weekStart, setWeekStart] = useState(new Date().toISOString().slice(0, 10));
+  const [startWeek, setStartWeek] = useState(new Date().toISOString().slice(0, 10));
+  const [endWeek, setEndWeek] = useState(new Date().toISOString().slice(0, 10));
+
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [startMonth, setStartMonth] = useState(1);
   const [startYear, setStartYear] = useState(new Date().getFullYear());
   const [endMonth, setEndMonth] = useState(new Date().getMonth() + 1);
   const [endYear, setEndYear] = useState(new Date().getFullYear());
+
+  const [singleYear, setSingleYear] = useState(new Date().getFullYear());
+  const [rangeStartYear, setRangeStartYear] = useState(new Date().getFullYear());
+  const [rangeEndYear, setRangeEndYear] = useState(new Date().getFullYear());
+
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -51,6 +66,45 @@ const ReportModule = () => {
     { length: 10 },
     (_, i) => new Date().getFullYear() - 5 + i
   );
+
+  const getDateOnly = (date) => {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
+
+  const getWeekEnd = (dateValue) => {
+    const start = getDateOnly(dateValue);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return end;
+  };
+
+  const getReportTitle = () => {
+    if (scaleType === "daily") {
+      if (rangeType === "single") return `Daily Report - ${new Date(day).toLocaleDateString()}`;
+      return `Daily Range Report - ${new Date(startDay).toLocaleDateString()} to ${new Date(endDay).toLocaleDateString()}`;
+    }
+
+    if (scaleType === "weekly") {
+      if (rangeType === "single") {
+        return `Weekly Report - ${new Date(weekStart).toLocaleDateString()} to ${getWeekEnd(weekStart).toLocaleDateString()}`;
+      }
+
+      return `Weekly Range Report - ${new Date(startWeek).toLocaleDateString()} to ${getWeekEnd(endWeek).toLocaleDateString()}`;
+    }
+
+    if (scaleType === "monthly") {
+      if (rangeType === "single") return `Monthly Report - ${months[month - 1]} ${year}`;
+      return `Monthly Range Report - ${months[startMonth - 1]} ${startYear} to ${months[endMonth - 1]} ${endYear}`;
+    }
+
+    if (scaleType === "yearly") {
+      if (rangeType === "single") return `Yearly Report - ${singleYear}`;
+      return `Yearly Range Report - ${rangeStartYear} to ${rangeEndYear}`;
+    }
+
+    return "Report";
+  };
 
   const generateReport = async () => {
     setLoading(true);
@@ -68,10 +122,32 @@ const ReportModule = () => {
         return;
       }
 
+      let filtered = [];
+      let rangeData = [];
+
       if (rangeType === "single") {
-        const filtered = deliveries.filter((d) => {
-          const date = new Date(d.date);
-          return date.getMonth() + 1 === month && date.getFullYear() === year;
+        filtered = deliveries.filter((d) => {
+          const date = getDateOnly(d.date);
+
+          if (scaleType === "daily") {
+            return date.getTime() === getDateOnly(day).getTime();
+          }
+
+          if (scaleType === "weekly") {
+            const start = getDateOnly(weekStart);
+            const end = getWeekEnd(weekStart);
+            return date >= start && date <= end;
+          }
+
+          if (scaleType === "monthly") {
+            return date.getMonth() + 1 === month && date.getFullYear() === year;
+          }
+
+          if (scaleType === "yearly") {
+            return date.getFullYear() === Number(singleYear);
+          }
+
+          return false;
         });
 
         const organization = buildOrgSummary(filtered);
@@ -79,44 +155,123 @@ const ReportModule = () => {
 
         setReportData({
           data: { organization, perFarmer, payments, farmers },
+          title: getReportTitle(),
         });
       } else {
-        const monthlyData = [];
+        if (scaleType === "daily") {
+          let cur = getDateOnly(startDay);
+          const end = getDateOnly(endDay);
 
-        let cur = new Date(startYear, startMonth - 1);
-        const end = new Date(endYear, endMonth - 1);
+          while (cur <= end) {
+            const currentDate = new Date(cur);
 
-        while (cur <= end) {
-          const m = cur.getMonth() + 1;
-          const y = cur.getFullYear();
+            const dayFiltered = deliveries.filter((d) => {
+              const date = getDateOnly(d.date);
+              return date.getTime() === currentDate.getTime();
+            });
 
-          const filtered = deliveries.filter((d) => {
-            const date = new Date(d.date);
-            return date.getMonth() + 1 === m && date.getFullYear() === y;
+            rangeData.push({
+              label: currentDate.toLocaleDateString(),
+              organization: buildOrgSummary(dayFiltered),
+              perFarmer: buildPerFarmerSummary(dayFiltered, farmers),
+            });
+
+            cur.setDate(cur.getDate() + 1);
+          }
+
+          filtered = deliveries.filter((d) => {
+            const date = getDateOnly(d.date);
+            return date >= getDateOnly(startDay) && date <= getDateOnly(endDay);
           });
-
-          monthlyData.push({
-            monthName: months[m - 1],
-            year: y,
-            organization: buildOrgSummary(filtered),
-            perFarmer: buildPerFarmerSummary(filtered, farmers),
-          });
-
-          cur.setMonth(cur.getMonth() + 1);
         }
 
-        const allFiltered = deliveries.filter((d) => {
-          const date = new Date(d.date);
-          const start = new Date(startYear, startMonth - 1);
-          const endDate = new Date(endYear, endMonth);
-          return date >= start && date < endDate;
-        });
+        if (scaleType === "weekly") {
+          let cur = getDateOnly(startWeek);
+          const end = getDateOnly(endWeek);
+
+          while (cur <= end) {
+            const currentStart = new Date(cur);
+            const currentEnd = getWeekEnd(currentStart);
+
+            const weekFiltered = deliveries.filter((d) => {
+              const date = getDateOnly(d.date);
+              return date >= currentStart && date <= currentEnd;
+            });
+
+            rangeData.push({
+              label: `${currentStart.toLocaleDateString()} - ${currentEnd.toLocaleDateString()}`,
+              organization: buildOrgSummary(weekFiltered),
+              perFarmer: buildPerFarmerSummary(weekFiltered, farmers),
+            });
+
+            cur.setDate(cur.getDate() + 7);
+          }
+
+          filtered = deliveries.filter((d) => {
+            const date = getDateOnly(d.date);
+            return date >= getDateOnly(startWeek) && date <= getWeekEnd(endWeek);
+          });
+        }
+
+        if (scaleType === "monthly") {
+          let cur = new Date(startYear, startMonth - 1);
+          const end = new Date(endYear, endMonth - 1);
+
+          while (cur <= end) {
+            const m = cur.getMonth() + 1;
+            const y = cur.getFullYear();
+
+            const monthFiltered = deliveries.filter((d) => {
+              const date = new Date(d.date);
+              return date.getMonth() + 1 === m && date.getFullYear() === y;
+            });
+
+            rangeData.push({
+              label: `${months[m - 1]} ${y}`,
+              organization: buildOrgSummary(monthFiltered),
+              perFarmer: buildPerFarmerSummary(monthFiltered, farmers),
+            });
+
+            cur.setMonth(cur.getMonth() + 1);
+          }
+
+          filtered = deliveries.filter((d) => {
+            const date = new Date(d.date);
+            const start = new Date(startYear, startMonth - 1);
+            const endDate = new Date(endYear, endMonth);
+            return date >= start && date < endDate;
+          });
+        }
+
+        if (scaleType === "yearly") {
+          for (let y = Number(rangeStartYear); y <= Number(rangeEndYear); y++) {
+            const yearFiltered = deliveries.filter((d) => {
+              const date = new Date(d.date);
+              return date.getFullYear() === y;
+            });
+
+            rangeData.push({
+              label: `${y}`,
+              organization: buildOrgSummary(yearFiltered),
+              perFarmer: buildPerFarmerSummary(yearFiltered, farmers),
+            });
+          }
+
+          filtered = deliveries.filter((d) => {
+            const date = new Date(d.date);
+            return (
+              date.getFullYear() >= Number(rangeStartYear) &&
+              date.getFullYear() <= Number(rangeEndYear)
+            );
+          });
+        }
 
         setReportData({
-          data: monthlyData,
-          perFarmer: buildPerFarmerSummary(allFiltered, farmers),
+          data: rangeData,
+          perFarmer: buildPerFarmerSummary(filtered, farmers),
           payments,
           farmers,
+          title: getReportTitle(),
         });
       }
     } catch (err) {
@@ -296,7 +451,7 @@ const ReportModule = () => {
         labels: ["Volume Sold", "Sales Generated (₱)"],
         datasets: [
           {
-            label: "Current Month",
+            label: reportData.title || "Current Report",
             data: [org.totalVolumeSold || 0, org.totalSalesGenerated || 0],
             backgroundColor: ["#4CAF50", "#2196F3"],
             borderColor: ["#388E3C", "#1976D2"],
@@ -331,7 +486,7 @@ const ReportModule = () => {
       return (
         <div className="charts-grid">
           <div className="chart-card">
-            <h4>Monthly Summary</h4>
+            <h4>{reportData.title || "Summary"}</h4>
 
             <div className="chart-wrapper-small">
               <Bar
@@ -357,6 +512,45 @@ const ReportModule = () => {
       );
     }
 
+    if (rangeType === "range" && Array.isArray(reportData.data)) {
+      const lineData = {
+        labels: reportData.data.map((item) => item.label),
+        datasets: [
+          {
+            label: "Volume Sold",
+            data: reportData.data.map(
+              (item) => item.organization?.totalVolumeSold || 0
+            ),
+            borderWidth: 2,
+            tension: 0.3,
+          },
+          {
+            label: "Sales Generated",
+            data: reportData.data.map(
+              (item) => item.organization?.totalSalesGenerated || 0
+            ),
+            borderWidth: 2,
+            tension: 0.3,
+          },
+        ],
+      };
+
+      return (
+        <div className="charts-grid">
+          <div className="chart-card">
+            <h4>{reportData.title || "Range Summary"}</h4>
+
+            <div className="chart-wrapper-small">
+              <Line
+                data={lineData}
+                options={{ responsive: true, maintainAspectRatio: false }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -372,11 +566,53 @@ const ReportModule = () => {
     return reportData?.perFarmer || [];
   };
 
+  const getOrganizationSummary = () => {
+    if (rangeType === "single") return reportData?.data?.organization || null;
+
+    if (rangeType === "range" && Array.isArray(reportData?.data)) {
+      return reportData.data.reduce(
+        (summary, item) => {
+          const org = item.organization || {};
+
+          summary.totalDeliveries += org.totalDeliveries || 0;
+          summary.totalVolumeSold += org.totalVolumeSold || 0;
+          summary.totalSalesGenerated += org.totalSalesGenerated || 0;
+
+          Object.entries(org.beanTypeSummary || {}).forEach(([beanType, data]) => {
+            if (!summary.beanTypeSummary[beanType]) {
+              summary.beanTypeSummary[beanType] = {
+                volumeSold: 0,
+                salesGenerated: 0,
+              };
+            }
+
+            summary.beanTypeSummary[beanType].volumeSold += data.volumeSold || 0;
+            summary.beanTypeSummary[beanType].salesGenerated +=
+              data.salesGenerated || 0;
+          });
+
+          return summary;
+        },
+        {
+          totalDeliveries: 0,
+          totalVolumeSold: 0,
+          totalSalesGenerated: 0,
+          uniqueFarmers: getPerFarmer().length,
+          beanTypeSummary: {},
+        }
+      );
+    }
+
+    return null;
+  };
+
+  const organizationSummary = getOrganizationSummary();
+
   return (
     <div className="report-module">
       <div className="report-header no-print">
         <div>
-          <h2>Monthly Report Generation</h2>
+          <h2>Report Generation</h2>
         </div>
 
         <div className="report-actions">
@@ -391,6 +627,188 @@ const ReportModule = () => {
       </div>
 
       <div className="report-controls no-print">
+        <div className="filter-group">
+          <label>Report Content</label>
+          <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
+            <option value="both">Organization Wide + Farmers</option>
+            <option value="organization">Organization Wide Only</option>
+            <option value="farmers">Farmers Only</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Scale</label>
+          <select value={scaleType} onChange={(e) => setScaleType(e.target.value)}>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Range Type</label>
+          <select value={rangeType} onChange={(e) => setRangeType(e.target.value)}>
+            <option value="single">Single</option>
+            <option value="range">Range</option>
+          </select>
+        </div>
+
+        {scaleType === "daily" && rangeType === "single" && (
+          <div className="filter-group">
+            <label>Date</label>
+            <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+          </div>
+        )}
+
+        {scaleType === "daily" && rangeType === "range" && (
+          <>
+            <div className="filter-group">
+              <label>Start Date</label>
+              <input type="date" value={startDay} onChange={(e) => setStartDay(e.target.value)} />
+            </div>
+
+            <div className="filter-group">
+              <label>End Date</label>
+              <input type="date" value={endDay} onChange={(e) => setEndDay(e.target.value)} />
+            </div>
+          </>
+        )}
+
+        {scaleType === "weekly" && rangeType === "single" && (
+          <div className="filter-group">
+            <label>Week Start</label>
+            <input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)} />
+          </div>
+        )}
+
+        {scaleType === "weekly" && rangeType === "range" && (
+          <>
+            <div className="filter-group">
+              <label>Start Week</label>
+              <input type="date" value={startWeek} onChange={(e) => setStartWeek(e.target.value)} />
+            </div>
+
+            <div className="filter-group">
+              <label>End Week</label>
+              <input type="date" value={endWeek} onChange={(e) => setEndWeek(e.target.value)} />
+            </div>
+          </>
+        )}
+
+        {scaleType === "monthly" && rangeType === "single" && (
+          <>
+            <div className="filter-group">
+              <label>Month</label>
+              <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+                {months.map((m, index) => (
+                  <option key={m} value={index + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Year</label>
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        {scaleType === "monthly" && rangeType === "range" && (
+          <>
+            <div className="filter-group">
+              <label>Start Month</label>
+              <select value={startMonth} onChange={(e) => setStartMonth(Number(e.target.value))}>
+                {months.map((m, index) => (
+                  <option key={m} value={index + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Start Year</label>
+              <select value={startYear} onChange={(e) => setStartYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>End Month</label>
+              <select value={endMonth} onChange={(e) => setEndMonth(Number(e.target.value))}>
+                {months.map((m, index) => (
+                  <option key={m} value={index + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>End Year</label>
+              <select value={endYear} onChange={(e) => setEndYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        {scaleType === "yearly" && rangeType === "single" && (
+          <div className="filter-group">
+            <label>Year</label>
+            <select value={singleYear} onChange={(e) => setSingleYear(Number(e.target.value))}>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {scaleType === "yearly" && rangeType === "range" && (
+          <>
+            <div className="filter-group">
+              <label>Start Year</label>
+              <select value={rangeStartYear} onChange={(e) => setRangeStartYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>End Year</label>
+              <select value={rangeEndYear} onChange={(e) => setRangeEndYear(Number(e.target.value))}>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
         <button
           onClick={generateReport}
           disabled={loading}
@@ -411,37 +829,35 @@ const ReportModule = () => {
           <div className="report-title">
             <h2>DTI Product Trading Report</h2>
 
-            <p>
-              {months[month - 1]} {year}
-            </p>
+            <p>{reportData.title || getReportTitle()}</p>
 
             <p className="generated-date">
               Generated on: {new Date().toLocaleString()}
             </p>
           </div>
 
-          <div className="charts-section">
-            <h3>Visual Analytics</h3>
-            {renderSalesChart()}
-          </div>
+          {reportType !== "farmers" && (
+            <div className="charts-section">
+              <h3>Visual Analytics</h3>
+              {renderSalesChart()}
+            </div>
+          )}
 
-          {reportData.data?.organization && (
+          {reportType !== "farmers" && organizationSummary && (
             <div className="organization-summary">
               <h3>Organization-Wide Summary</h3>
 
               <div className="summary-cards">
                 <div className="card">
                   <h4>Total Deliveries</h4>
-                  <p>{reportData.data.organization.totalDeliveries || 0}</p>
+                  <p>{organizationSummary.totalDeliveries || 0}</p>
                   <small>deliveries recorded</small>
                 </div>
 
                 <div className="card">
                   <h4>Volume Sold</h4>
                   <p>
-                    {(
-                      reportData.data.organization.totalVolumeSold || 0
-                    ).toFixed(2)}
+                    {(organizationSummary.totalVolumeSold || 0).toFixed(2)}
                   </p>
                   <small>products sold</small>
                 </div>
@@ -451,7 +867,7 @@ const ReportModule = () => {
 
                   <p>
                     {formatCurrency(
-                      reportData.data.organization.totalSalesGenerated
+                      organizationSummary.totalSalesGenerated
                     )}
                   </p>
 
@@ -461,15 +877,14 @@ const ReportModule = () => {
                 <div className="card">
                   <h4>Active Farmers</h4>
 
-                  <p>{reportData.data.organization.uniqueFarmers || 0}</p>
+                  <p>{organizationSummary.uniqueFarmers || 0}</p>
 
                   <small>with transactions</small>
                 </div>
               </div>
 
-              {reportData.data.organization.beanTypeSummary &&
-                Object.keys(reportData.data.organization.beanTypeSummary)
-                  .length > 0 && (
+              {organizationSummary.beanTypeSummary &&
+                Object.keys(organizationSummary.beanTypeSummary).length > 0 && (
                   <div className="bean-breakdown">
                     <h4>Product Type Breakdown</h4>
 
@@ -484,7 +899,7 @@ const ReportModule = () => {
 
                       <tbody>
                         {Object.entries(
-                          reportData.data.organization.beanTypeSummary
+                          organizationSummary.beanTypeSummary
                         ).map(([beanType, data]) => (
                           <tr key={beanType}>
                             <td>
@@ -500,6 +915,36 @@ const ReportModule = () => {
                     </table>
                   </div>
                 )}
+            </div>
+          )}
+
+          {rangeType === "range" && reportType !== "farmers" && Array.isArray(reportData.data) && (
+            <div className="monthly-breakdown">
+              <h3>Range Breakdown</h3>
+
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Period</th>
+                    <th>Total Deliveries</th>
+                    <th>Volume Sold</th>
+                    <th>Sales Generated</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {reportData.data.map((item, index) => (
+                    <tr key={index}>
+                      <td>
+                        <strong>{item.label}</strong>
+                      </td>
+                      <td>{item.organization?.totalDeliveries || 0}</td>
+                      <td>{(item.organization?.totalVolumeSold || 0).toFixed(2)}</td>
+                      <td>{formatCurrency(item.organization?.totalSalesGenerated || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -546,6 +991,12 @@ const ReportModule = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {reportType !== "organization" && getPerFarmer().length === 0 && (
+            <div className="no-data">
+              <p>No farmer data found for the selected report filter.</p>
             </div>
           )}
         </div>

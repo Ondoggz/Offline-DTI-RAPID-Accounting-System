@@ -18,9 +18,7 @@ let mainWindow = null;
 let syncInterval = null;
 let sessionUser = null;
 
-/* =========================
-   WAIT FOR VITE
-========================= */
+
 function waitForVite(url, retries = 20, interval = 500) {
   return new Promise((resolve) => {
     const http = require("http");
@@ -44,9 +42,7 @@ function waitForVite(url, retries = 20, interval = 500) {
   });
 }
 
-/* =========================
-   CREATE WINDOW
-========================= */
+//window creation
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -93,9 +89,7 @@ async function createWindow() {
   });
 }
 
-/* =========================
-   HELPERS
-========================= */
+//helpers
 function ensureDB() {
   if (!dbReady) throw new Error("Database not ready");
 }
@@ -161,9 +155,7 @@ async function deleteRemoteFirst({ table, id, remotePath, body = null }) {
   };
 }
 
-/* =========================
-   SYNC RUNNER
-========================= */
+//sync runner
 const SYNC_INTERVAL_MS = 10_000;
 
 async function runSync() {
@@ -205,9 +197,7 @@ async function runSync() {
   return result;
 }
 
-/* =========================
-   APP INIT
-========================= */
+//app init
 app.whenReady().then(async () => {
   await createWindow();
 
@@ -230,9 +220,7 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
-/* =========================
-   IPC — SYNC
-========================= */
+//sync ipc
 ipcMain.handle("sync:trigger", async () => {
   ensureDB();
   console.log("[IPC] sync:trigger called");
@@ -248,9 +236,7 @@ ipcMain.handle("sync:pending", () => {
   return getPendingCount(db);
 });
 
-/* =========================
-   IPC — AUTH
-========================= */
+//auth ipc
 ipcMain.handle("user:login", async (_, { username, password }) => {
   ensureDB();
 
@@ -288,9 +274,7 @@ ipcMain.handle("user:logout", () => {
   return { success: true };
 });
 
-/* =========================
-   IPC — USERS
-========================= */
+//users ipc
 ipcMain.handle("user:add", (_, data) => {
   ensureDB();
 
@@ -385,9 +369,7 @@ ipcMain.handle("user:delete", async (_, id) => {
   }
 });
 
-/* =========================
-   IPC — BEANS
-========================= */
+//beans ipc
 ipcMain.handle("bean:add", (_, data) => {
   ensureDB();
   const res = db.addBean(data);
@@ -426,9 +408,7 @@ ipcMain.handle("bean:delete", async (_, id) => {
   }
 });
 
-/* =========================
-   IPC — FARMERS
-========================= */
+//farmers ipc
 ipcMain.handle("farmer:add", (_, data) => {
   ensureDB();
   const res = db.addFarmer(data);
@@ -474,9 +454,7 @@ ipcMain.handle("farmer:delete", async (_, id) => {
   }
 });
 
-/* =========================
-   IPC — DELIVERIES
-========================= */
+//deliveries ipc
 ipcMain.handle("delivery:add", (_, data) => {
   ensureDB();
   const res = db.addDelivery(data);
@@ -527,9 +505,7 @@ ipcMain.handle("delivery:delete", async (_, payload) => {
   }
 });
 
-/* =========================
-   IPC — PAYMENTS
-========================= */
+//payments ipc
 ipcMain.handle("payment:add", (_, data) => {
   ensureDB();
 
@@ -549,9 +525,7 @@ ipcMain.handle("payment:get", () => {
   return db.getPayments();
 });
 
-/* =========================
-   IPC — TRANSACTIONS
-========================= */
+//transactions ipc
 ipcMain.handle("transaction:add", (_, data) => {
   ensureDB();
   const res = db.addTransaction(data);

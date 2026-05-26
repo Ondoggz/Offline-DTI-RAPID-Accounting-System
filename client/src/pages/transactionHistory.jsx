@@ -36,7 +36,12 @@ function TransactionHistory() {
           summary: {
             totalPaid,
             balance,
-            status: balance <= 0 ? "PAID" : "PENDING",
+            status:
+              totalPaid <= 0
+                ? "UNPAID"
+                : balance <= 0
+                ? "FULLY PAID"
+                : "PARTIALLY PAID",
           },
           payments: relatedPayments,
         };
@@ -173,8 +178,10 @@ function TransactionHistory() {
                   {summary && (
                     <span
                       className={`status-badge ${
-                        summary.status === "PAID"
+                        summary.status === "FULLY PAID"
                           ? "status-paid"
+                          : summary.status === "PARTIALLY PAID"
+                          ? "status-partial"
                           : "status-pending"
                       }`}
                     >
@@ -196,12 +203,15 @@ function TransactionHistory() {
 
                   <div className="transaction-summary-grid">
                     <div>
-                     <small>Reference Number</small>
-                     <strong>{t.referenceNo || "N/A"}</strong>
+                      <small>Reference Number</small>
+                      <strong>{t.referenceNo || "N/A"}</strong>
                     </div>
+
                     <div>
                       <small>Total</small>
-                      <strong>₱{Number(t.totalAmount || 0).toFixed(2)}</strong>
+                      <strong>
+                        ₱{Number(t.totalAmount || 0).toFixed(2)}
+                      </strong>
                     </div>
 
                     <div>
@@ -218,7 +228,7 @@ function TransactionHistory() {
 
                     <div>
                       <small>Status</small>
-                      <strong>{balance <= 0 ? "Fully Paid" : summary?.status}</strong>
+                      <strong>{summary?.status}</strong>
                     </div>
                   </div>
 
@@ -229,13 +239,15 @@ function TransactionHistory() {
                       <div className="payment-list">
                         {payments.map((p, i) => (
                           <div key={i} className="payment-item">
-                            <strong>
-                              ₱{Number(p.amountPaid || 0).toFixed(2)}
-                            </strong>
+                            <div>
+                              <strong>
+                                ₱{Number(p.amountPaid || 0).toFixed(2)}
+                              </strong>
+                            </div>
 
                             {p.createdAt && (
                               <span>
-                                {new Date(p.createdAt).toLocaleDateString()}
+                                {new Date(p.createdAt).toLocaleString()}
                               </span>
                             )}
                           </div>

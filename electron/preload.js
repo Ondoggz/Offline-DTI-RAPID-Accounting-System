@@ -1,63 +1,44 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-  /* =========================
-     BEANS
-  ========================= */
+ //beans/products
   addBean: (data) => ipcRenderer.invoke("bean:add", data),
   getBeans: () => ipcRenderer.invoke("bean:get"),
   deleteBean: (id) => ipcRenderer.invoke("bean:delete", id),
 
-  /* =========================
-     FARMERS
-  ========================= */
+//farmers
   addFarmer: (data) => ipcRenderer.invoke("farmer:add", data),
   getFarmers: () => ipcRenderer.invoke("farmer:get"),
   updateFarmer: (id, data) => ipcRenderer.invoke("farmer:update", { id, data }),
   deleteFarmer: (id) => ipcRenderer.invoke("farmer:delete", id),
 
-  /* =========================
-     DELIVERIES
-  ========================= */
+//deliveries
   addDelivery: (data) => ipcRenderer.invoke("delivery:add", data),
   getDeliveries: () => ipcRenderer.invoke("delivery:get"),
   deleteDelivery: (id, password) => ipcRenderer.invoke("delivery:delete", { id, password }),
-
-  /* =========================
-     PAYMENTS
-  ========================= */
+//payments
   addPayment: (data) => ipcRenderer.invoke("payment:add", data),
   getPayments: () => ipcRenderer.invoke("payment:get"),
 
-  /* =========================
-     TRANSACTIONS
-  ========================= */
+//transactions
   getTransactions: () => ipcRenderer.invoke("transaction:get"),
 
-  /* =========================
-     USERS
-  ========================= */
+//users
   addUser: (data) => ipcRenderer.invoke("user:add", data),
   getUsers: () => ipcRenderer.invoke("user:get"),
   findUser: (username) => ipcRenderer.invoke("user:find", username),
   updateUser: (data) => ipcRenderer.invoke("user:update", data),
   deleteUser: (id) => ipcRenderer.invoke("user:delete", id),
 
-  /* =========================
-     AUTH
-  ========================= */
+//auth
   login: (username, password) => ipcRenderer.invoke("user:login", { username, password }),
   getSession: () => ipcRenderer.invoke("user:session"),
   logout: () => ipcRenderer.invoke("user:logout"),
 
-  /* =========================
-     PRINT
-  ========================= */
+//print
   printForm: (data) => ipcRenderer.invoke("form:print", data),
 
-  /* =========================
-     SYNC
-  ========================= */
+//sync
   syncNow: () => ipcRenderer.invoke("sync:trigger"),
   checkOnline: () => ipcRenderer.invoke("sync:checkOnline"),
   getPendingCount: () => ipcRenderer.invoke("sync:pending"),
