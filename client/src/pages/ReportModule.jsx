@@ -814,7 +814,7 @@ const ReportModule = () => {
           disabled={loading}
           className="generate-btn"
         >
-          {loading ? "⏳ Generating..." : "🚀 Generate Report"}
+          {loading ? "⏳ Generating..." : "Generate Report"}
         </button>
       </div>
 

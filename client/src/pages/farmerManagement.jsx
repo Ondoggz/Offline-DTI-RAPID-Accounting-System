@@ -190,7 +190,7 @@ function FarmerManagement() {
     // Beans — at least one selected
     const selectedBeans = form.beans.filter((b) => String(b).trim() !== "");
     if (selectedBeans.length === 0) {
-      newErrors.beans = "Select at least one bean";
+      newErrors.beans = "Select at least one product";
     }
 
     setErrors(newErrors);
